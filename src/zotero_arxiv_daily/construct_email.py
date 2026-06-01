@@ -110,8 +110,8 @@ def render_email(papers:list[Paper]) -> str:
         return framework.replace('__CONTENT__', get_empty_html())
     
     for p in papers:
-        #rate = get_stars(p.score)
-        rate = round(p.score, 1) if p.score is not None else 'Unknown'
+        rate = get_stars(p.score) if p.score is not None else ''
+        #rate = round(p.score, 1) if p.score is not None else 'Unknown'
         author_list = [a for a in p.authors]
         num_authors = len(author_list)
         if num_authors <= 5:
