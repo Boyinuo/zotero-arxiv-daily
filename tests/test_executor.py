@@ -163,10 +163,10 @@ def test_run_end_to_end(config, monkeypatch, tmp_path):
     )
     from zotero_arxiv_daily.sent_tracker import SentTracker
 
-    # Config: source=["arxiv"], reranker="api", send_empty=false
+    # Config: source=["arxiv"], reranker="api_embedding", send_empty=false
     with open_dict(config):
         config.executor.source = ["arxiv"]
-        config.executor.reranker = "api"
+        config.executor.reranker = "api_embedding"
         config.executor.send_empty = False
 
     # 1. Stub pyzotero
@@ -228,7 +228,7 @@ def test_run_no_papers_send_empty_false(config, monkeypatch, tmp_path):
 
     with open_dict(config):
         config.executor.source = ["arxiv"]
-        config.executor.reranker = "api"
+        config.executor.reranker = "api_embedding"
         config.executor.send_empty = False
 
     stub_zot = make_stub_zotero_client()
@@ -271,7 +271,7 @@ def test_run_no_papers_send_empty_true(config, monkeypatch, tmp_path):
 
     with open_dict(config):
         config.executor.source = ["arxiv"]
-        config.executor.reranker = "api"
+        config.executor.reranker = "api_embedding"
         config.executor.send_empty = True
 
     stub_zot = make_stub_zotero_client()
