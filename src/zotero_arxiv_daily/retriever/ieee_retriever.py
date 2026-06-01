@@ -1,9 +1,37 @@
 import feedparser
+import re
 from .base import BaseRetriever, register_retriever
 from ..protocol import Paper
 from loguru import logger
 from typing import Any
 from time import sleep
+
+
+# — publication ID → journal abbreviation ——————————————————————————————
+
+_JOURNAL_MAP: dict[str, str] = {
+    "7083369": "RA-L",
+    "8860": "TRO",
+    "8856": "TASE",
+    "3516": "TMECH",
+    "100": "RAM",
+    "6221037": "THMS",
+    "6221036": "TCYB",
+    "6221021": "TSMC",
+    "41": "TIE",
+    "6046": "TMM",
+    "6221020": "JBHI",
+}
+
+
+def _pub_id_from_url(url: str) -> str | None:
+    """Extract the numeric publication ID from an IEEE TOC RSS URL.
+
+    >>> _pub_id_from_url("https://ieeexplore.ieee.org/rss/TOC7083369.XML")
+    '7083369'
+    """
+    m = re.search(r"TOC(\d+)", url, re.IGNORECASE)
+    return m.group(1) if m else None
 
 
 @register_retriever("ieee")
@@ -80,10 +108,17 @@ class IEEERetriever(BaseRetriever):
                 )
                 continue
 
+            pub_id = _pub_id_from_url(url)
+            journal = _JOURNAL_MAP.get(pub_id, "IEEE") if pub_id else "IEEE"
+
             logger.info(
                 f"  -> {len(feed.entries)} entries from "
-                f"{feed.feed.get('title', url)}"
+                f"{feed.feed.get('title', url)} ({journal})"
             )
+
+            # Tag every entry with its source journal
+            for entry in feed.entries:
+                entry["_journal"] = journal
 
             if self.config.executor.debug:
                 all_entries.extend(feed.entries[:10])
@@ -140,6 +175,8 @@ class IEEERetriever(BaseRetriever):
         # papers are behind a paywall, so we leave pdf_url / full_text
         # as None, consistent with bioRxiv / medRxiv.
 
+        journal = raw_paper.get("_journal", "IEEE")
+
         return Paper(
             source=self.name,
             title=title,
@@ -149,4 +186,5 @@ class IEEERetriever(BaseRetriever):
             pdf_url=None,
             full_text=None,
             pub_date=pub_date,
+            journal=journal,
         )

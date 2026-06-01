@@ -52,8 +52,41 @@ def get_empty_html():
   """
   return block_template
 
-def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None, pub_date:str=None):
-    date_html = f'<strong>Published:</strong> {pub_date}' if pub_date else ''
+JOURNAL_COLORS: dict[str, str] = {
+    "RA-L":  "#d41515",   # red
+    "TRO":   "#c75b1a",   # orange
+    "TASE":  "#2e7d32",   # green
+    "TMECH": "#6a1b9a",   # purple
+    "RAM":   "#c2185b",   # pink
+    "THMS":  "#0277bd",   # light blue
+    "TCYB":  "#00838f",   # teal
+    "TSMC":  "#5d4037",   # brown
+    "TIE":   "#4527a0",   # deep purple
+    "TMM":   "#ef6c00",   # amber
+    "JBHI":  "#1b5e20",   # dark green
+    "IEEE":  "#37474f",   # blue-grey (fallback)
+    "arXiv": "#b31b1b",   # arXiv red
+    "arxiv": "#b31b1b",   # arXiv red (lowercase fallback)
+    "biorxiv":  "#997a00",  # gold-brown
+    "medrxiv":  "#990000",  # dark red
+}
+
+def _source_color(source: str) -> str:
+    return JOURNAL_COLORS.get(source, JOURNAL_COLORS.get(source.upper(), "#555"))
+
+
+def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None, pub_date:str=None, journal:str=None):
+    if pub_date:
+        if journal:
+            color = _source_color(journal)
+            date_html = (
+                f'<strong>Published:</strong> {pub_date} &nbsp; | &nbsp; '
+                f'<span style="color:{color};font-weight:bold;">{journal}</span>'
+            )
+        else:
+            date_html = f'<strong>Published:</strong> {pub_date}'
+    else:
+        date_html = ''
     block_template = """
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
     <tr>
@@ -91,7 +124,7 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors,rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations, pub_date_html=date_html)
+    return block_template.format(title=title, authors=authors, rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations, pub_date_html=date_html)
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
@@ -136,7 +169,7 @@ def render_email(papers:list[Paper]) -> str:
         else:
             affiliations = 'Unknown Affiliation'
         link_url = p.pdf_url or p.url
-        parts.append(get_block_html(p.title, authors, rate, p.tldr, link_url, affiliations, p.pub_date))
+        parts.append(get_block_html(p.title, authors, rate, p.tldr, link_url, affiliations, p.pub_date, p.journal))
 
     content = '<br>' + '</br><br>'.join(parts) + '</br>'
     return framework.replace('__CONTENT__', content)

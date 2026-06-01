@@ -81,6 +81,35 @@ def test_get_block_html_no_pub_date():
     assert "Published" not in html
 
 
+def test_get_block_html_with_journal():
+    html = get_block_html("Title", "Auth", "4.0", "Summary", "http://link", "MIT", "2026-06-01", "RA-L")
+    assert "2026-06-01" in html
+    assert "RA-L" in html
+    assert "d41515" in html  # the color code for RA-L
+
+
+def test_get_block_html_arxiv_journal():
+    html = get_block_html("Title", "Auth", "8.0", "Summary", "http://link", "MIT", "2026-06-01", "arXiv")
+    assert "arXiv" in html
+    assert "b31b1b" in html  # arXiv red
+
+
+def test_get_block_html_ieee_journal_from_paper():
+    from zotero_arxiv_daily.construct_email import render_email
+    paper = make_sample_paper(
+        journal="TRO",
+        pub_date="2026-05-15",
+        score=7.5,
+        tldr="ok",
+        affiliations=["MIT"],
+        pdf_url="http://link",
+        url="http://link",
+    )
+    html = render_email([paper])
+    assert "TRO" in html
+    assert "2026-05-15" in html
+
+
 def test_get_empty_html():
     html = get_empty_html()
     assert "No Papers Today" in html

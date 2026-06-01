@@ -176,6 +176,7 @@ class ArxivRetriever(BaseRetriever):
             pdf_url=pdf_url,
             full_text=full_text,
             pub_date=pub_date,
+            journal="arXiv",
         )
 
 
