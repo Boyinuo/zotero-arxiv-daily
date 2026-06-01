@@ -176,6 +176,7 @@ def make_sample_paper(**overrides) -> Paper:
         tldr=None,
         affiliations=None,
         score=None,
+        pub_date=None,
     )
     defaults.update(overrides)
     return Paper(**defaults)

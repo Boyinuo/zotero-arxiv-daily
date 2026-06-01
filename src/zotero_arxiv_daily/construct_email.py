@@ -52,7 +52,8 @@ def get_empty_html():
   """
   return block_template
 
-def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None):
+def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None, pub_date:str=None):
+    date_html = f'<strong>Published:</strong> {pub_date}' if pub_date else ''
     block_template = """
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
     <tr>
@@ -65,6 +66,11 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
             {authors}
             <br>
             <i>{affiliations}</i>
+        </td>
+    </tr>
+    <tr>
+        <td style="font-size: 14px; color: #666; padding: 4px 0;">
+            {pub_date_html}
         </td>
     </tr>
     <tr>
@@ -85,23 +91,27 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors,rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations)
+    return block_template.format(title=title, authors=authors,rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations, pub_date_html=date_html)
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
     half_star = '<span class="half-star">⭐</span>'
-    low = 6
+    low = 3
     high = 8
     if score <= low:
-        return ''
+        return f'<span style="color:#999;">{score:.1f} (no match)</span>'
     elif score >= high:
-        return full_star * 5
+        return ('<div class="star-wrapper">' + full_star * 5
+                + f'</div> <span style="color:#333;">{score:.1f}</span>')
     else:
-        interval = (high-low) / 10
-        star_num = math.ceil((score-low) / interval)
-        full_star_num = int(star_num/2)
-        half_star_num = star_num - full_star_num * 2
-        return '<div class="star-wrapper">'+full_star * full_star_num + half_star * half_star_num + '</div>'
+        interval = (high - low) / 10  # 10 half-star steps across the range
+        star_num = math.ceil((score - low) / interval)
+        full_star_num = star_num // 2
+        half_star_num = star_num % 2
+        return ('<div class="star-wrapper">'
+                + full_star * full_star_num
+                + half_star * half_star_num
+                + f'</div> <span style="color:#333;">{score:.1f}</span>')
 
 
 def render_email(papers:list[Paper]) -> str:
@@ -125,7 +135,8 @@ def render_email(papers:list[Paper]) -> str:
                 affiliations += ', ...'
         else:
             affiliations = 'Unknown Affiliation'
-        parts.append(get_block_html(p.title, authors, rate, p.tldr, p.pdf_url, affiliations))
+        link_url = p.pdf_url or p.url
+        parts.append(get_block_html(p.title, authors, rate, p.tldr, link_url, affiliations, p.pub_date))
 
     content = '<br>' + '</br><br>'.join(parts) + '</br>'
     return framework.replace('__CONTENT__', content)

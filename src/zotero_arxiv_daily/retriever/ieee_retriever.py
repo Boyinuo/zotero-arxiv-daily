@@ -129,6 +129,13 @@ class IEEERetriever(BaseRetriever):
         else:
             url = guid
 
+        # Publication date from RSS (feedparser provides parsed struct_time)
+        pub_date = None
+        published_parsed = raw_paper.get("published_parsed")
+        if published_parsed:
+            from time import strftime
+            pub_date = strftime("%Y-%m-%d", published_parsed)
+
         # IEEE does not expose direct PDF URLs in RSS feeds and the
         # papers are behind a paywall, so we leave pdf_url / full_text
         # as None, consistent with bioRxiv / medRxiv.
@@ -141,4 +148,5 @@ class IEEERetriever(BaseRetriever):
             url=url,
             pdf_url=None,
             full_text=None,
+            pub_date=pub_date,
         )

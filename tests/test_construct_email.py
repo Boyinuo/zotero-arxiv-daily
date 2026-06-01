@@ -48,8 +48,9 @@ def test_render_email_no_affiliations():
 
 
 def test_get_stars_low_score():
-    assert get_stars(5.0) == ""
-    assert get_stars(6.0) == ""
+    # Scores at or below low threshold (3) show "no match"
+    assert "no match" in get_stars(2.0)
+    assert "no match" in get_stars(3.0)
 
 
 def test_get_stars_high_score():
@@ -64,13 +65,20 @@ def test_get_stars_mid_score():
 
 
 def test_get_block_html_contains_all_fields():
-    html = get_block_html("Title", "Auth", "3.5", "Summary", "http://pdf.url", "MIT")
+    html = get_block_html("Title", "Auth", "3.5", "Summary", "http://pdf.url", "MIT", "2026-06-01")
     assert "Title" in html
     assert "Auth" in html
     assert "3.5" in html
     assert "Summary" in html
     assert "http://pdf.url" in html
     assert "MIT" in html
+    assert "2026-06-01" in html
+
+
+def test_get_block_html_no_pub_date():
+    html = get_block_html("Title", "Auth", "3.5", "Summary", "http://pdf.url", "MIT", None)
+    assert "Title" in html
+    assert "Published" not in html
 
 
 def test_get_empty_html():

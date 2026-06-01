@@ -50,6 +50,7 @@ class BiorxivRetriever(BaseRetriever):
         abstract = raw_paper['abstract']
         pdf_url = f"https://www.{self.server}.org/content/{raw_paper['doi']}v{raw_paper['version']}.full.pdf"
         full_text = None # biorxiv forbids scraping its pdf
+        pub_date = raw_paper.get('date')  # e.g. "2026-03-02"
         return Paper(
             source=self.name,
             title=title,
@@ -57,5 +58,6 @@ class BiorxivRetriever(BaseRetriever):
             abstract=abstract,
             url=pdf_url,
             pdf_url=pdf_url,
-            full_text=full_text
+            full_text=full_text,
+            pub_date=pub_date,
         )
