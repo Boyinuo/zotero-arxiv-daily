@@ -42,7 +42,7 @@ class Paper:
         # use gpt-4o tokenizer for estimation
         enc = tiktoken.encoding_for_model("gpt-4o")
         prompt_tokens = enc.encode(prompt)
-        prompt_tokens = prompt_tokens[:4000]  # truncate to 4000 tokens
+        prompt_tokens = prompt_tokens[:50000]  # truncate to 50000 tokens
         prompt = enc.decode(prompt_tokens)
         
         response = openai_client.chat.completions.create(

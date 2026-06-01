@@ -31,7 +31,7 @@ class ApiRerankReranker(BaseReranker):
 
         query_max_tokens = cfg.get("query_max_tokens") or 30000
         query = self._build_interest_query(corpus, query_max_tokens)
-        documents = [c.abstract for c in candidates]
+        documents = [c.title + " " + c.abstract for c in candidates]
 
         body: dict = {
             "model": cfg.model,

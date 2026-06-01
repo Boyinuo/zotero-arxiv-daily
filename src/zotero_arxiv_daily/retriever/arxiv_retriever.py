@@ -133,8 +133,9 @@ class ArxivRetriever(BaseRetriever):
 
         # Get full information of each paper from arxiv api
         bar = tqdm(total=len(all_paper_ids))
-        max_batch_retries = 5
-        batch_retry_delay = 30
+        max_batch_retries = 3
+        batch_retry_delay = 60
+        inter_batch_delay = 10
         for i in range(0, len(all_paper_ids), 20):
             search = arxiv.Search(id_list=all_paper_ids[i:i + 20])
             for attempt in range(max_batch_retries):
@@ -151,7 +152,7 @@ class ArxivRetriever(BaseRetriever):
                     else:
                         raise
             if i + 20 < len(all_paper_ids):
-                sleep(3)
+                sleep(inter_batch_delay)
         bar.close()
 
         return raw_papers
