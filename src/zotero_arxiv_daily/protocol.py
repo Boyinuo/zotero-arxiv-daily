@@ -22,6 +22,7 @@ class Paper:
     score: Optional[float] = None
     pub_date: Optional[str] = None
     journal: Optional[str] = None
+    title_cn: Optional[str] = None
 
     def _generate_tldr_with_llm(self, openai_client:OpenAI,llm_params:dict) -> str:
         lang = llm_params.get('language', 'English')
@@ -68,6 +69,27 @@ class Paper:
             tldr = self.abstract
             self.tldr = tldr
             return tldr
+
+    def generate_title_translation(self, openai_client:OpenAI,llm_params:dict) -> str | None:
+        try:
+            lang = llm_params.get('language', 'English')
+            prompt = f"Translate the following paper title into {lang}. Only return the translated title, nothing else:\n\n{self.title}"
+            response = openai_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"You are a professional translator. Translate the given text into {lang}. Only return the translation, no explanation.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                **llm_params.get('generation_kwargs', {})
+            )
+            self.title_cn = response.choices[0].message.content.strip()
+            return self.title_cn
+        except Exception as e:
+            logger.warning(f"Failed to translate title of {self.url}: {e}")
+            self.title_cn = None
+            return None
 
     def _generate_affiliations_with_llm(self, openai_client:OpenAI,llm_params:dict) -> Optional[list[str]]:
         if self.full_text is not None:

@@ -81,6 +81,11 @@ def test_get_block_html_no_pub_date():
     assert "Published" not in html
 
 
+def test_get_block_html_with_title_cn():
+    html = get_block_html("Title", "Auth", "4.0", "Summary", "http://link", "MIT", "2026-06-01", "RA-L", "翻译后的标题")
+    assert "翻译后的标题" in html
+
+
 def test_get_block_html_with_journal():
     html = get_block_html("Title", "Auth", "4.0", "Summary", "http://link", "MIT", "2026-06-01", "RA-L")
     assert "2026-06-01" in html

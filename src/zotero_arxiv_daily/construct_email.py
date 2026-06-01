@@ -75,7 +75,7 @@ def _source_color(source: str) -> str:
     return JOURNAL_COLORS.get(source, JOURNAL_COLORS.get(source.upper(), "#555"))
 
 
-def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None, pub_date:str=None, journal:str=None):
+def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None, pub_date:str=None, journal:str=None, title_cn:str=None):
     if pub_date:
         if journal:
             color = _source_color(journal)
@@ -87,11 +87,12 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
             date_html = f'<strong>Published:</strong> {pub_date}'
     else:
         date_html = ''
+    title_cn_html = f'<br><span style="font-size:16px;color:#555;">{title_cn}</span>' if title_cn else ''
     block_template = """
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
     <tr>
         <td style="font-size: 20px; font-weight: bold; color: #333;">
-            {title}
+            {title}{title_cn_html}
         </td>
     </tr>
     <tr>
@@ -124,7 +125,7 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors, rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations, pub_date_html=date_html)
+    return block_template.format(title=title, authors=authors, rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations, pub_date_html=date_html, title_cn_html=title_cn_html)
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
@@ -169,7 +170,7 @@ def render_email(papers:list[Paper]) -> str:
         else:
             affiliations = 'Unknown Affiliation'
         link_url = p.pdf_url or p.url
-        parts.append(get_block_html(p.title, authors, rate, p.tldr, link_url, affiliations, p.pub_date, p.journal))
+        parts.append(get_block_html(p.title, authors, rate, p.tldr, link_url, affiliations, p.pub_date, p.journal, p.title_cn))
 
     content = '<br>' + '</br><br>'.join(parts) + '</br>'
     return framework.replace('__CONTENT__', content)
