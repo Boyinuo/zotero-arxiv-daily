@@ -62,6 +62,7 @@ reranker:
     base_url: null # Base URL for the rerank API. Example: https://dashscope.aliyuncs.com/compatible-api/v1
     model: null # Rerank model name. Example: qwen3-rerank
     instruct: null # Optional rerank instruction. Example: "Retrieve semantically similar text."
+    query_max_tokens: null # Max tokens for the interest query built from Zotero corpus. Default 30000. Adjust based on your Zotero library size.
 
 executor:
   debug: false # Whether to use debug mode. Example: true

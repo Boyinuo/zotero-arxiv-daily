@@ -29,7 +29,8 @@ class ApiRerankReranker(BaseReranker):
             base_url=f"{cfg.base_url.rstrip('/')}",
         )
 
-        query = self._build_interest_query(corpus)
+        query_max_tokens = cfg.get("query_max_tokens") or 30000
+        query = self._build_interest_query(corpus, query_max_tokens)
         documents = [c.abstract for c in candidates]
 
         body: dict = {
@@ -60,15 +61,29 @@ class ApiRerankReranker(BaseReranker):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _build_interest_query(corpus: list[CorpusPaper]) -> str:
+    def _build_interest_query(corpus: list[CorpusPaper], max_tokens: int) -> str:
         """Fuse the user's Zotero corpus into a representative query string.
 
         More recently added papers are placed near the front so the
         cross-encoder's self-attention naturally weights them higher.
+        The query is capped at *max_tokens* to stay within model limits
+        while carrying as much of the user's interest profile as possible.
         """
+        import tiktoken
+
+        enc = tiktoken.encoding_for_model("gpt-4o")
+
         corpus = sorted(corpus, key=lambda x: x.added_date, reverse=True)
         lines: list[str] = []
-        for c in corpus[:50]:  # cap — keep the query reasonably sized
+        tokens_used = 0
+
+        for c in corpus:
             abstract_snip = c.abstract[:300]  # first 300 chars is enough signal
-            lines.append(f"{c.title}: {abstract_snip}")
+            line = f"{c.title}: {abstract_snip}"
+            line_tokens = len(enc.encode(line)) + 1  # +1 for the "\n\n" separator
+            if tokens_used + line_tokens > max_tokens:
+                break
+            lines.append(line)
+            tokens_used += line_tokens
+
         return "\n\n".join(lines)
