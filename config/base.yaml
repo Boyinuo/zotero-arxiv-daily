@@ -12,6 +12,21 @@ source:
     category: null # The categories of target biorxiv papers. Find categories from [here](https://www.biorxiv.org/). Example: ["biochemistry","animal behavior and cognition"]
   medrxiv:
     category: null # The categories of target medrxiv papers. Find categories from [here](https://www.medrxiv.org/) Example: ["psychiatry and clinical psychology", "neurology"]
+  ieee:
+    feed_urls: null # A list of IEEE Xplore journal RSS feed URLs or publication IDs. Each journal's TOC RSS is at https://ieeexplore.ieee.org/rss/TOC{id}.XML
+                    # Common RSS URLs (uncomment and edit as needed):
+                    #   - "https://ieeexplore.ieee.org/rss/TOC7083369.XML"  # IEEE Robotics and Automation Letters (RA-L)
+                    #   - "https://ieeexplore.ieee.org/rss/TOC8860.XML"      # IEEE Transactions on Robotics (TRO)
+                    #   - "https://ieeexplore.ieee.org/rss/TOC8856.XML"      # IEEE Trans. on Automation Science and Engineering (TASE)
+                    #   - "https://ieeexplore.ieee.org/rss/TOC3516.XML"      # IEEE/ASME Trans. on Mechatronics (TMECH)
+                    #   - "https://ieeexplore.ieee.org/rss/TOC100.XML"       # IEEE Robotics & Automation Magazine (RAM)
+                    #   - "https://ieeexplore.ieee.org/rss/TOC6221036.XML"   # IEEE Trans. on Cybernetics
+                    #   - "https://ieeexplore.ieee.org/rss/TOC6221021.XML"   # IEEE Trans. on Systems, Man, and Cybernetics: Systems
+                    #   - "https://ieeexplore.ieee.org/rss/TOC6221037.XML"   # IEEE Trans. on Human-Machine Systems
+                    #   - "https://ieeexplore.ieee.org/rss/TOC41.XML"        # IEEE Trans. on Industrial Electronics
+                    #   - "https://ieeexplore.ieee.org/rss/TOC6046.XML"      # IEEE Trans. on Multimedia
+                    #   - "https://ieeexplore.ieee.org/rss/TOC6221020.XML"   # IEEE Journal of Biomedical and Health Informatics
+                    # You can also use a bare publication ID, e.g. "7083369"
 
 email:
   sender: ??? # The email account of the SMTP server that sends you email. Example: abc@qq.com

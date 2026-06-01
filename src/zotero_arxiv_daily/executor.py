@@ -4,6 +4,7 @@ from omegaconf import DictConfig, ListConfig
 from .utils import glob_match
 from .retriever import get_retriever_cls
 from .protocol import CorpusPaper
+from .sent_tracker import sent_tracker_for_project
 import random
 from datetime import datetime
 from .reranker import get_reranker_cls
@@ -39,6 +40,7 @@ class Executor:
         }
         self.reranker = get_reranker_cls(config.executor.reranker)(config)
         self.openai_client = OpenAI(api_key=config.llm.api.key, base_url=config.llm.api.base_url)
+        self.sent_tracker = sent_tracker_for_project()
     def fetch_zotero_corpus(self) -> list[CorpusPaper]:
         logger.info("Fetching zotero corpus")
         zot = zotero.Zotero(self.config.zotero.user_id, 'user', self.config.zotero.api_key)
@@ -106,6 +108,11 @@ class Executor:
             logger.info(f"Retrieved {len(papers)} {source} papers")
             all_papers.extend(papers)
         logger.info(f"Total {len(all_papers)} papers retrieved from all sources")
+
+        # Deduplicate against previously-sent papers (cross-run tracking)
+        all_papers = self.sent_tracker.filter_new_papers(all_papers)
+        logger.info(f"{len(all_papers)} new papers after deduplication")
+
         reranked_papers = []
         if len(all_papers) > 0:
             logger.info("Reranking papers...")
@@ -122,3 +129,7 @@ class Executor:
         email_content = render_email(reranked_papers)
         send_email(self.config, email_content)
         logger.info("Email sent successfully")
+
+        # Persist sent-paper records so they won't be emailed again
+        self.sent_tracker.mark_sent(all_papers)
+        self.sent_tracker.save()

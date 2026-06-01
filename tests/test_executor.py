@@ -148,7 +148,7 @@ def test_fetch_zotero_corpus_paper_with_zero_collections(config, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_run_end_to_end(config, monkeypatch):
+def test_run_end_to_end(config, monkeypatch, tmp_path):
     """Full pipeline: Zotero fetch -> filter -> retrieve -> rerank -> TLDR -> email."""
     import smtplib
 
@@ -161,6 +161,7 @@ def test_run_end_to_end(config, monkeypatch):
         make_stub_smtp,
         make_stub_zotero_client,
     )
+    from zotero_arxiv_daily.sent_tracker import SentTracker
 
     # Config: source=["arxiv"], reranker="api", send_empty=false
     with open_dict(config):
@@ -199,7 +200,14 @@ def test_run_end_to_end(config, monkeypatch):
     # 5. Stub sleep (reranker/retriever)
     monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
 
-    # 6. Run
+    # 6. Stub sent_tracker to use a temp file (avoid polluting real data/)
+    temp_tracker = SentTracker(tmp_path / "sent.json")
+    monkeypatch.setattr(
+        "zotero_arxiv_daily.executor.sent_tracker_for_project",
+        lambda: temp_tracker,
+    )
+
+    # 7. Run
     executor = Executor(config)
     executor.run()
 
@@ -209,13 +217,14 @@ def test_run_end_to_end(config, monkeypatch):
     assert "text/html" in email_body
 
 
-def test_run_no_papers_send_empty_false(config, monkeypatch):
+def test_run_no_papers_send_empty_false(config, monkeypatch, tmp_path):
     """When no papers are found and send_empty=false, no email is sent."""
     import smtplib
 
     from omegaconf import open_dict
 
     from tests.canned_responses import make_stub_openai_client, make_stub_smtp, make_stub_zotero_client
+    from zotero_arxiv_daily.sent_tracker import SentTracker
 
     with open_dict(config):
         config.executor.source = ["arxiv"]
@@ -239,19 +248,26 @@ def test_run_no_papers_send_empty_false(config, monkeypatch):
     monkeypatch.setattr(smtplib, "SMTP", make_stub_smtp(sent))
     monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
 
+    temp_tracker = SentTracker(tmp_path / "sent.json")
+    monkeypatch.setattr(
+        "zotero_arxiv_daily.executor.sent_tracker_for_project",
+        lambda: temp_tracker,
+    )
+
     executor = Executor(config)
     executor.run()
 
     assert len(sent) == 0, "No email should be sent when no papers and send_empty=false"
 
 
-def test_run_no_papers_send_empty_true(config, monkeypatch):
+def test_run_no_papers_send_empty_true(config, monkeypatch, tmp_path):
     """When no papers are found and send_empty=true, empty email is sent."""
     import smtplib
 
     from omegaconf import open_dict
 
     from tests.canned_responses import make_stub_openai_client, make_stub_smtp, make_stub_zotero_client
+    from zotero_arxiv_daily.sent_tracker import SentTracker
 
     with open_dict(config):
         config.executor.source = ["arxiv"]
@@ -274,6 +290,12 @@ def test_run_no_papers_send_empty_true(config, monkeypatch):
     sent = []
     monkeypatch.setattr(smtplib, "SMTP", make_stub_smtp(sent))
     monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
+
+    temp_tracker = SentTracker(tmp_path / "sent.json")
+    monkeypatch.setattr(
+        "zotero_arxiv_daily.executor.sent_tracker_for_project",
+        lambda: temp_tracker,
+    )
 
     executor = Executor(config)
     executor.run()
