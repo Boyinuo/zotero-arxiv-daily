@@ -69,6 +69,8 @@ JOURNAL_COLORS: dict[str, str] = {
     "arxiv": "#b31b1b",   # arXiv red (lowercase fallback)
     "biorxiv":  "#997a00",  # gold-brown
     "medrxiv":  "#990000",  # dark red
+    "Science Robotics":       "#d84315",  # deep orange
+    "Nature Communications":  "#1565c0",  # nature blue
 }
 
 def _source_color(source: str) -> str:
