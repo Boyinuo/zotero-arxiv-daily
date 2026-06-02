@@ -50,14 +50,22 @@ class HybridReranker(BaseReranker):
         cross_q = _to_quantiles(cross_raw)
 
         for c in candidates:
+            # Sort key: quantile fusion (equal weight from both paths)
             qe = emb_q.get(c.url, 0)
             qx = cross_q.get(c.url, 0)
-            c.score = round((qe + qx) / 2 * 10, 1)
-            # Preserve raw scores for transparent display in the email
-            c.embedding_score = round(emb_raw.get(c.url, 0), 1)
-            c.rerank_score = round(cross_raw.get(c.url, 0), 1)
+            c.score = round((qe + qx) / 2 * 10, 1)  # used ONLY for ordering
 
         candidates.sort(key=lambda c: c.score, reverse=True)
+
+        # Overwrite score with raw average for honest display.
+        # The sort order is already fixed above — this only changes
+        # what the user sees in the email.
+        for c in candidates:
+            e = emb_raw.get(c.url, 0)
+            x = cross_raw.get(c.url, 0)
+            c.score = round(min((e + x) / 2, 10.0), 1)
+            c.embedding_score = round(e, 1)
+            c.rerank_score = round(x, 1)
         return candidates
 
 
