@@ -50,12 +50,12 @@ class ApiRerankReranker(BaseReranker):
             body["instruct"] = cfg.instruct
 
         response = client.post("/reranks", body=body, cast_to=object)
-        results = response.results
+        results = response["results"]
 
         # Build index → score map, then assign scores
         score_map: dict[int, float] = {}
         for r in results:
-            score_map[r.index] = r.relevance_score
+            score_map[r["index"]] = r["relevance_score"]
 
         for i, c in enumerate(candidates):
             c.score = score_map.get(i, 0.0) * 10  # scale to ~0–10
