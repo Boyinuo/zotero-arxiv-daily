@@ -56,8 +56,18 @@ class HybridReranker(BaseReranker):
 
         # ── 2.  Reciprocal Rank Fusion ───────────────────────────
         for c in candidates:
-            key = c.url  # arXiv entry_id is the canonical id
+            key = c.url
             c.score = float(emb_rank.get(key, 0) + cross_rank.get(key, 0))
+
+        # ── 3.  Normalize RRF scores to 0–10 for display ─────────
+        raw = np.array([c.score for c in candidates])
+        smin, smax = raw.min(), raw.max()
+        if smax - smin > 1e-8:
+            scaled = (raw - smin) / (smax - smin) * 10
+        else:
+            scaled = np.full_like(raw, 5.0)
+        for s, c in zip(scaled, candidates):
+            c.score = float(s)
 
         candidates.sort(key=lambda x: x.score, reverse=True)
         return candidates
