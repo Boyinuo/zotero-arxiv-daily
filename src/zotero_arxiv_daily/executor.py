@@ -13,6 +13,32 @@ from .utils import send_email
 from .retriever.arxiv_retriever import download_full_text
 from openai import OpenAI
 from tqdm import tqdm
+from time import sleep
+from typing import Callable, TypeVar
+
+_T = TypeVar("_T")
+
+
+def _retry_zotero(
+    fn: Callable[[], _T],
+    name: str,
+    *,
+    max_retries: int = 3,
+    base_delay: float = 10.0,
+) -> _T:
+    """Call *fn* with exponential backoff on connection failures."""
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except Exception as exc:
+            if attempt == max_retries - 1:
+                raise
+            delay = base_delay * (2 ** attempt)
+            logger.warning(
+                f"Zotero {name} failed (attempt {attempt + 1}/{max_retries}): "
+                f"{exc}. Retrying in {delay:.0f}s..."
+            )
+            sleep(delay)
 
 
 def normalize_path_patterns(patterns: list[str] | ListConfig | None, config_key: str) -> list[str] | None:
@@ -45,9 +71,12 @@ class Executor:
     def fetch_zotero_corpus(self) -> list[CorpusPaper]:
         logger.info("Fetching zotero corpus")
         zot = zotero.Zotero(self.config.zotero.user_id, 'user', self.config.zotero.api_key)
-        collections = zot.everything(zot.collections())
+        collections = _retry_zotero(lambda: zot.everything(zot.collections()), "collections")
         collections = {c['key']:c for c in collections}
-        corpus = zot.everything(zot.items(itemType='conferencePaper || journalArticle || preprint'))
+        corpus = _retry_zotero(
+            lambda: zot.everything(zot.items(itemType='conferencePaper || journalArticle || preprint')),
+            "items",
+        )
         corpus = [c for c in corpus if c['data']['abstractNote'] != '']
         def get_collection_path(col_key:str) -> str:
             if p := collections[col_key]['data']['parentCollection']:
