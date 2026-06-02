@@ -5,9 +5,15 @@ The embedding path (api_embedding) provides time-decayed cosine similarity
 against every Zotero paper.  The cross-encoder path (api_rerank) provides
 deeper semantic relevance via joint (query, document) scoring.
 
-Each path's raw scores are independently min–max normalized to [0, 1] so
-their distributions are comparable, then averaged.  The result is both the
-display score *and* the sort key.
+**Score calibration via quantile normalisation**
+
+The two paths produce scores with very different distribution shapes
+(embedding: narrow 2–7 band; rerank: wide 0.3–9.8 spread).  Simple averaging
+would let the wider distribution dominate.
+
+Instead, each path's scores are mapped to their **quantiles** within the
+current batch of candidates.  Both paths then contribute equally on a
+common [0, 1] scale, and the final score is the mean quantile × 10.
 """
 
 from __future__ import annotations
@@ -23,7 +29,7 @@ from ..protocol import Paper, CorpusPaper
 
 @register_reranker("hybrid")
 class HybridReranker(BaseReranker):
-    """Combine api_embedding and api_rerank via normalised-score averaging."""
+    """Combine api_embedding and api_rerank via quantile-normalised averaging."""
 
     def __init__(self, config: DictConfig):
         super().__init__(config)
@@ -36,20 +42,20 @@ class HybridReranker(BaseReranker):
     def rerank(
         self, candidates: list[Paper], corpus: list[CorpusPaper]
     ) -> list[Paper]:
-        # ── 1.  Raw scores from both paths ─────────────────────────
         emb_raw = _raw_embedding_scores(self._embedding, candidates, corpus)
         cross_raw = _raw_rerank_scores(self._cross, candidates, corpus)
 
-        # ── 2.  Min–max normalize each path to [0, 1] ──────────────
-        emb_norm = _minmax_dict(emb_raw)
-        cross_norm = _minmax_dict(cross_raw)
+        # Map each path's scores to quantiles [0, 1]
+        emb_q = _to_quantiles(emb_raw)
+        cross_q = _to_quantiles(cross_raw)
 
-        # ── 3.  Average & scale to 0–10 ────────────────────────────
-        all_urls = {c.url for c in candidates}
         for c in candidates:
-            e = emb_norm.get(c.url, 0)
-            x = cross_norm.get(c.url, 0)
-            c.score = round((e + x) / 2 * 10, 1)
+            qe = emb_q.get(c.url, 0)
+            qx = cross_q.get(c.url, 0)
+            c.score = round((qe + qx) / 2 * 10, 1)
+            # Preserve raw scores for transparent display in the email
+            c.embedding_score = round(emb_raw.get(c.url, 0), 1)
+            c.rerank_score = round(cross_raw.get(c.url, 0), 1)
 
         candidates.sort(key=lambda c: c.score, reverse=True)
         return candidates
@@ -60,13 +66,34 @@ class HybridReranker(BaseReranker):
 # ——————————————————————————————————————————————————————————————————
 
 
-def _minmax_dict(scores: dict[str, float]) -> dict[str, float]:
-    """Min–max normalize dict values to [0, 1]."""
-    vals = list(scores.values())
-    smin, smax = min(vals), max(vals)
-    if smax - smin < 1e-8:
-        return {k: 0.5 for k in scores}
-    return {k: (v - smin) / (smax - smin) for k, v in scores.items()}
+def _to_quantiles(scores: dict[str, float]) -> dict[str, float]:
+    """Convert ``{url: raw_score}`` to ``{url: quantile_in_[0,1]}``.
+
+    Uses *average* rank for ties so that papers with identical raw scores
+    receive identical quantiles.
+    """
+    if len(scores) <= 1:
+        return {url: 0.5 for url in scores}
+
+    # Sort by score ascending; assign average rank for ties
+    sorted_items = sorted(scores.items(), key=lambda x: x[1])
+    n = len(sorted_items)
+
+    result: dict[str, float] = {}
+    i = 0
+    while i < n:
+        # Find the run of identical scores
+        j = i
+        while j < n and sorted_items[j][1] == sorted_items[i][1]:
+            j += 1
+        # Average rank across the tie group
+        avg_rank = (i + j - 1) / 2  # 0-indexed ranks averaged
+        quantile = avg_rank / (n - 1)
+        for k in range(i, j):
+            result[sorted_items[k][0]] = quantile
+        i = j
+
+    return result
 
 
 def _raw_embedding_scores(
@@ -74,7 +101,12 @@ def _raw_embedding_scores(
     candidates: list[Paper],
     corpus: list[CorpusPaper],
 ) -> dict[str, float]:
-    """Embedding path: weighted cosine similarity with time decay."""
+    """Embedding path: weighted cosine similarity with time decay.
+
+    Each candidate's score is the weighted sum of cosine similarities
+    against every Zotero paper (newer papers weighted higher), scaled
+    to 0–10.
+    """
     corpus_by_date = sorted(corpus, key=lambda x: x.added_date, reverse=True)
     time_decay = 1.0 / (1.0 + np.log10(np.arange(1, len(corpus_by_date) + 1)))
     time_decay = time_decay / time_decay.sum()

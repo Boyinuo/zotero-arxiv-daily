@@ -157,7 +157,16 @@ def render_email(papers:list[Paper]) -> str:
         return framework.replace('__CONTENT__', get_empty_html())
     
     for p in papers:
-        rate = get_stars(p.score) if p.score is not None else ''
+        # Build relevance line — for hybrid reranker show raw breakdown
+        if p.embedding_score is not None and p.rerank_score is not None:
+            rate = (
+                get_stars(p.score) if p.score is not None else ""
+                + f' <span style="font-size:12px;color:#888;">'
+                f'(embedding {p.embedding_score:.1f} &middot; rerank {p.rerank_score:.1f})'
+                f'</span>'
+            )
+        else:
+            rate = get_stars(p.score) if p.score is not None else ''
         #rate = round(p.score, 1) if p.score is not None else 'Unknown'
         author_list = [a for a in p.authors]
         num_authors = len(author_list)

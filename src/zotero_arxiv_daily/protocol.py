@@ -21,6 +21,8 @@ class Paper:
     tldr: Optional[str] = None
     affiliations: Optional[list[str]] = None
     score: Optional[float] = None
+    embedding_score: Optional[float] = None  # raw embedding similarity (0–10)
+    rerank_score: Optional[float] = None      # raw cross-encoder relevance (0–10)
     pub_date: Optional[str] = None
     journal: Optional[str] = None
     title_cn: Optional[str] = None
