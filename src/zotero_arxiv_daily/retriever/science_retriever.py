@@ -3,18 +3,22 @@ from .base import BaseRetriever, register_retriever
 from ..protocol import Paper
 from loguru import logger
 from typing import Any
+from time import sleep
 
 
 @register_retriever("science")
 class ScienceRetriever(BaseRetriever):
-    """Retrieve latest papers from Science Robotics RSS feed.
+    """Retrieve latest papers from Science journal RSS feeds (Science Robotics,
+    Science Advances, etc.).
 
-    Configuration expects ``source.science.feed_url`` — a single RSS URL.
+    Configuration expects ``source.science.feed_urls`` — a list of RSS URLs.
     Example::
 
         source:
           science:
-            feed_url: "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics"
+            feed_urls:
+              - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics"
+              - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=sciadv"
 
     .. note::
 
@@ -28,33 +32,42 @@ class ScienceRetriever(BaseRetriever):
 
     def __init__(self, config):
         super().__init__(config)
-        feed_url = self.retriever_config.get("feed_url")
-        if not feed_url:
+        raw_urls = self.retriever_config.get("feed_urls", [])
+        if not raw_urls:
             raise ValueError(
-                "source.science.feed_url must contain the Science "
-                "Robotics RSS URL."
+                "source.science.feed_urls must contain at least one "
+                "Science journal RSS URL."
             )
-        self.feed_url = feed_url.strip()
+        self.feed_urls = [u.strip() for u in raw_urls]
 
     # — BaseRetriever interface ——————————————————————————————————
 
     def _retrieve_raw_papers(self) -> list[dict[str, Any]]:
-        logger.info(f"Fetching Science RSS feed: {self.feed_url}")
-        feed = feedparser.parse(self.feed_url)
+        all_entries: list[dict[str, Any]] = []
+        for url in self.feed_urls:
+            logger.info(f"Fetching Science RSS feed: {url}")
+            feed = feedparser.parse(url)
 
-        if feed.bozo and not feed.entries:
-            logger.warning(
-                f"Failed to parse Science RSS feed ({self.feed_url}): "
-                f"{feed.bozo_exception}"
+            if feed.bozo and not feed.entries:
+                logger.warning(
+                    f"Failed to parse Science RSS feed ({url}): "
+                    f"{feed.bozo_exception}"
+                )
+                continue
+
+            journal = feed.feed.get("title", url)
+            logger.info(
+                f"  -> {len(feed.entries)} entries from {journal}"
             )
-            return []
 
-        entries = feed.entries
-        if self.config.executor.debug:
-            entries = entries[:10]
+            if self.config.executor.debug:
+                all_entries.extend(feed.entries[:10])
+            else:
+                all_entries.extend(feed.entries)
 
-        logger.info(f"  -> {len(entries)} entries from Science RSS")
-        return list(entries)
+            sleep(1)  # be polite between feeds
+
+        return all_entries
 
     def convert_to_paper(self, raw_paper: dict[str, Any]) -> Paper | None:
         title = raw_paper.get("title", "").strip()
@@ -85,7 +98,7 @@ class ScienceRetriever(BaseRetriever):
         pub_date = raw_paper.get("prism_coverdate", "")
         pub_date = pub_date[:10] if pub_date else None
 
-        journal = raw_paper.get("prism_publicationname", "Science Robotics")
+        journal = raw_paper.get("prism_publicationname", "Science")
 
         return Paper(
             source=self.name,

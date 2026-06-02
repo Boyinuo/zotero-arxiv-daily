@@ -30,7 +30,9 @@ source:
   nature:
     feed_url: null # RSS feed URL for Nature Communications. Example: "https://www.nature.com/ncomms.rss"
   science:
-    feed_url: null # RSS feed URL for Science Robotics. Example: "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics"
+    feed_urls: null # A list of Science journal RSS feed URLs. Example:
+                    #   - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics"  # Science Robotics
+                    #   - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=sciadv"        # Science Advances
 
 email:
   sender: ??? # The email account of the SMTP server that sends you email. Example: abc@qq.com

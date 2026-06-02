@@ -70,6 +70,7 @@ JOURNAL_COLORS: dict[str, str] = {
     "biorxiv":  "#997a00",  # gold-brown
     "medrxiv":  "#990000",  # dark red
     "Science Robotics":       "#d84315",  # deep orange
+    "Science Advances":       "#c62828",  # red
     "Nature Communications":  "#1565c0",  # nature blue
 }
 
