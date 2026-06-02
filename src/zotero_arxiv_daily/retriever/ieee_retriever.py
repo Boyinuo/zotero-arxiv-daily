@@ -50,10 +50,30 @@ _NON_PAPER_TITLE_PATTERNS: list[str] = [
     r"^\s*results\s+announced",
     r"^\s*celebrating\s+excellence",
 
+    # Journal metadata footer entries (appear in every TOC as boilerplate)
+    r"\binformation\s+for\s+authors?\b",
+    r"\bpublication\s+information\b",
+
+    # Society information (multi-word society names, e.g.
+    # "IEEE Systems, Man, and Cybernetics Society Information")
+    r"\bieee\s+[\w/,& -]+\s+society\s+information\b",
+
+    # TechRxiv / Collabratec promos
+    r"\btechrxiv\b",
+    r"\bcollabratec\b",
+
+    # Other journal promos / filler
+    r"^\s*ieee\s+women\s+in\s+engineering",
+    r"^\s*medal\s+of\s+honor\s*$",
+    r"^\s*connect\.?\s*support\.?\s*inspire",
+    r"^\s*present\s+a\s+world\s+of\s+opportunity",
+    r"^\s*introducing\s+ieee",
+
     # Advertisements / promos / calendar
     r"^\s*(ram|ieee)\s+calendar",
     r"^\s*robot(ics)?\s+(of\s+the\s+month|ad)",
     r"^\s*ieee\s+robotics\s+&\s+automation",
+
 ]
 
 _NON_PAPER_TITLE_RE = re.compile("|".join(_NON_PAPER_TITLE_PATTERNS), re.IGNORECASE)
