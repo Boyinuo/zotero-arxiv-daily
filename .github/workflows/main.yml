@@ -37,11 +37,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase
           git add data/sent_papers.json
           if git diff --staged --quiet; then
             echo "No changes to sent-papers record"
           else
             git commit -m "chore: update sent-papers tracking [skip ci]"
-            git pull --rebase
             git push
           fi
