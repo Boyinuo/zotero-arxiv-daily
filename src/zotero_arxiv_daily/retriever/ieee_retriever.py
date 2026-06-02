@@ -7,6 +7,64 @@ from typing import Any
 from time import sleep
 
 
+# — title patterns that are never real papers ———————————————————————————
+#
+# IEEE RSS TOC feeds include many non-paper entries: blank pages, covers,
+# tables of contents, mastheads, editorials, columns, errata, society
+# announcements, advertisements, etc.  Real research papers never match
+# these patterns.
+
+_NON_PAPER_TITLE_PATTERNS: list[str] = [
+    # Physical page artefacts
+    r"^\s*blank\s+page\s*$",
+    r"^\s*table\s+of\s+contents\s*$",
+    r"^\s*(front|back|inside)\s*(cover|page)\s*$",
+    r"^\s*masthead\s*$",
+
+    # Editorial / opinion / column indicators
+    r"^\s*guest\s+editorial",
+    r"^\s*editorial\b",
+    r"^\s*greetings\s+from",
+    r"^\s*(a\s+)?hearty\s+thanks",
+    r"^\s*message\s+from\s+the\s+editor",
+    r"\[from\s+the\s+(editor|guest)",
+    r"\[president",
+    r"\[standards\]",
+    r"\[industry\s+activities\]",
+    r"\[student",
+    r"\[society\s+news\]",
+
+    # Errata / corrections (these refer to other papers)
+    r"^\s*correction(s)?\s+to\b",
+
+    # Society / journal meta announcements
+    r"^\s*ieee\s+(app|feedback|foundation|proceedings|access|tech\s+rxiv)",
+    r"^\s*new\s+ieee\s+transactions",
+    r"^\s*staff\s+list\s*$",
+    r"^\s*editorial\s+board\s*$",
+    r"^\s*ieee\s+\w+\s+society(\s+(information|awards?\s+call))?\s*$",
+
+    # Calls / solicitations (also match when prefixed, e.g. "IEEE RAS SOCIETY AWARDS CALL FOR NOMINATIONS")
+    r"^\s*call\s+for\s+(papers|nominations|proposals)",
+    r"society\s+awards?\s+call\s+for",
+    r"^\s*results\s+announced",
+    r"^\s*celebrating\s+excellence",
+
+    # Advertisements / promos / calendar
+    r"^\s*(ram|ieee)\s+calendar",
+    r"^\s*robot(ics)?\s+(of\s+the\s+month|ad)",
+    r"^\s*ieee\s+robotics\s+&\s+automation",
+]
+
+_NON_PAPER_TITLE_RE = re.compile("|".join(_NON_PAPER_TITLE_PATTERNS), re.IGNORECASE)
+
+
+def _is_non_paper_title(title: str) -> bool:
+    # Use search() instead of match() so patterns targeting bracketed
+    # suffixes like "[From the Editor's Desk]" or "[Standards]" work.
+    return bool(_NON_PAPER_TITLE_RE.search(title))
+
+
 # — publication ID → journal abbreviation ——————————————————————————————
 
 _JOURNAL_MAP: dict[str, str] = {
@@ -148,12 +206,21 @@ class IEEERetriever(BaseRetriever):
         if not title:
             return None
 
+        # Skip entries that are clearly not research papers (cover pages,
+        # tables of contents, blank pages, editorial boards, etc.)
+        if _is_non_paper_title(title):
+            return None
+
         # Authors are semicolon-separated in IEEE RSS
         author_str = raw_paper.get("authors", "")
         authors = [a.strip() for a in author_str.split(";") if a.strip()]
 
         # "description" in IEEE RSS is the abstract
         abstract = raw_paper.get("description", "")
+
+        # A research paper must have either authors or a non-trivial abstract
+        if not authors and not abstract:
+            return None
 
         url = raw_paper.get("link", "")
         guid = raw_paper.get("guid", url)
