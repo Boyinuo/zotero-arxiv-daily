@@ -3,7 +3,7 @@ from pyzotero import zotero
 from omegaconf import DictConfig, ListConfig
 from .utils import glob_match
 from .retriever import get_retriever_cls
-from .protocol import CorpusPaper
+from .protocol import CorpusPaper, Paper
 from .sent_tracker import sent_tracker_for_project
 import random
 from datetime import datetime
@@ -14,6 +14,7 @@ from .retriever.arxiv_retriever import download_full_text
 from openai import OpenAI
 from tqdm import tqdm
 from time import sleep
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, TypeVar
 
 _T = TypeVar("_T")
@@ -159,10 +160,22 @@ class Executor:
                     p.full_text = download_full_text(p)
 
             logger.info("Generating TLDR and affiliations...")
-            for p in tqdm(reranked_papers):
+            max_workers = self.config.executor.get("tldr_concurrency", 5)
+
+            def _enrich_paper(p: Paper) -> Paper:
                 p.generate_tldr(self.openai_client, self.config.llm)
                 p.generate_title_translation(self.openai_client, self.config.llm)
                 p.generate_affiliations(self.openai_client, self.config.llm)
+                return p
+
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                futures = {pool.submit(_enrich_paper, p): p for p in reranked_papers}
+                for f in tqdm(as_completed(futures), total=len(futures), desc="Generating TLDR"):
+                    try:
+                        f.result()
+                    except Exception as exc:
+                        p = futures[f]
+                        logger.warning(f"Failed to enrich {p.title}: {exc}")
         elif not self.config.executor.send_empty:
             logger.info("No new papers found. No email will be sent.")
             return
