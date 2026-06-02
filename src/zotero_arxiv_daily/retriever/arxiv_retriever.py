@@ -159,60 +159,61 @@ class ArxivRetriever(BaseRetriever):
         return raw_papers
 
     def convert_to_paper(self, raw_paper: ArxivResult) -> Paper:
-        title = raw_paper.title
-        authors = [a.name for a in raw_paper.authors]
-        abstract = raw_paper.summary
-        pdf_url = raw_paper.pdf_url
-        pub_date = raw_paper.published.strftime("%Y-%m-%d") if raw_paper.published else None
-        full_text = extract_text_from_tar(raw_paper)
-        if full_text is None:
-            full_text = extract_text_from_html(raw_paper)
-        if full_text is None:
-            full_text = extract_text_from_pdf(raw_paper)
+        """Lightweight conversion — full-text download is deferred to
+        ``download_full_text()``, which should only be called for papers
+        that survive dedup + ranking."""
         return Paper(
             source=self.name,
-            title=title,
-            authors=authors,
-            abstract=abstract,
+            title=raw_paper.title,
+            authors=[a.name for a in raw_paper.authors],
+            abstract=raw_paper.summary,
             url=raw_paper.entry_id,
-            pdf_url=pdf_url,
-            full_text=full_text,
-            pub_date=pub_date,
+            pdf_url=raw_paper.pdf_url,
+            source_url=raw_paper.source_url(),
+            full_text=None,
+            pub_date=raw_paper.published.strftime("%Y-%m-%d") if raw_paper.published else None,
             journal="arXiv",
         )
 
 
-def extract_text_from_html(paper: ArxivResult) -> str | None:
-    html_url = paper.entry_id.replace("/abs/", "/html/")
+def download_full_text(paper: Paper) -> str | None:
+    """Download and extract full text for a single arXiv paper.
+
+    Tries three sources in order: LaTeX tar → HTML → PDF.  The first
+    successful extraction wins.  Returns the full text, or *None* if all
+    three methods fail.
+    """
+    # 1) LaTeX source tarball
+    if paper.source_url:
+        ft = _run_with_hard_timeout(
+            _extract_text_from_tar_worker,
+            (paper.source_url, paper.url, paper.title),
+            timeout=TAR_EXTRACT_TIMEOUT,
+            operation="Tar extraction",
+            paper_title=paper.title,
+        )
+        if ft:
+            return ft
+
+    # 2) arXiv HTML (not available for every paper)
+    html_url = paper.url.replace("/abs/", "/html/")
     try:
-        return _extract_text_from_html_worker(html_url)
+        ft = _extract_text_from_html_worker(html_url)
+        if ft:
+            return ft
     except Exception as exc:
         logger.warning(f"HTML extraction failed for {paper.title}: {exc}")
-        return None
 
+    # 3) PDF fallback
+    if paper.pdf_url:
+        ft = _run_with_hard_timeout(
+            _extract_text_from_pdf_worker,
+            (paper.pdf_url,),
+            timeout=PDF_EXTRACT_TIMEOUT,
+            operation="PDF extraction",
+            paper_title=paper.title,
+        )
+        if ft:
+            return ft
 
-def extract_text_from_pdf(paper: ArxivResult) -> str | None:
-    if paper.pdf_url is None:
-        logger.warning(f"No PDF URL available for {paper.title}")
-        return None
-    return _run_with_hard_timeout(
-        _extract_text_from_pdf_worker,
-        (paper.pdf_url,),
-        timeout=PDF_EXTRACT_TIMEOUT,
-        operation="PDF extraction",
-        paper_title=paper.title,
-    )
-
-
-def extract_text_from_tar(paper: ArxivResult) -> str | None:
-    source_url = paper.source_url()
-    if source_url is None:
-        logger.warning(f"No source URL available for {paper.title}")
-        return None
-    return _run_with_hard_timeout(
-        _extract_text_from_tar_worker,
-        (source_url, paper.entry_id, paper.title),
-        timeout=TAR_EXTRACT_TIMEOUT,
-        operation="Tar extraction",
-        paper_title=paper.title,
-    )
+    return None

@@ -10,6 +10,7 @@ from datetime import datetime
 from .reranker import get_reranker_cls
 from .construct_email import render_email
 from .utils import send_email
+from .retriever.arxiv_retriever import download_full_text
 from openai import OpenAI
 from tqdm import tqdm
 
@@ -118,6 +119,16 @@ class Executor:
             logger.info("Reranking papers...")
             reranked_papers = self.reranker.rerank(all_papers, corpus)
             reranked_papers = reranked_papers[:self.config.executor.max_paper_num]
+
+            # Download full text for arXiv papers that survived ranking.
+            # Full text is only needed for TLDR / affiliation generation, so
+            # we defer the expensive download until after dedup + cut-off.
+            arxiv_papers = [p for p in reranked_papers if p.source == "arxiv" and not p.full_text]
+            if arxiv_papers:
+                logger.info(f"Downloading full text for {len(arxiv_papers)} arXiv papers...")
+                for p in tqdm(arxiv_papers, desc="Downloading full text"):
+                    p.full_text = download_full_text(p)
+
             logger.info("Generating TLDR and affiliations...")
             for p in tqdm(reranked_papers):
                 p.generate_tldr(self.openai_client, self.config.llm)
