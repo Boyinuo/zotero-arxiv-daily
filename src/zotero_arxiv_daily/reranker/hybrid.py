@@ -3,8 +3,11 @@ rerank scores for the best of both worlds.
 
 The embedding path (api_embedding) provides precise time-decayed similarity
 against every Zotero paper, while the cross-encoder path (api_rerank) brings
-deeper semantic understanding of (query, document) pairs.  The final score is
-a configurable weighted blend of the two.
+deeper semantic understanding of (query, document) pairs.
+
+Fusion uses **Reciprocal Rank Fusion (RRF)** — a standard technique that is
+immune to score-distribution mismatches.  A paper that ranks well in *either*
+path gets a boost, while a paper that ranks poorly in both is penalised.
 """
 
 from __future__ import annotations
@@ -18,17 +21,6 @@ from .api_rerank import ApiRerankReranker
 from ..protocol import Paper, CorpusPaper
 
 
-def _minmax_normalize(scores: np.ndarray) -> np.ndarray:
-    """Scale *scores* to [0, 1] via min-max normalization.
-
-    If all scores are identical they are mapped to 0.5.
-    """
-    smin, smax = scores.min(), scores.max()
-    if smax - smin < 1e-8:
-        return np.full_like(scores, 0.5)
-    return (scores - smin) / (smax - smin)
-
-
 @register_reranker("hybrid")
 class HybridReranker(BaseReranker):
     """Combine api_embedding (bi-encoder) and api_rerank (cross-encoder) scores.
@@ -37,11 +29,7 @@ class HybridReranker(BaseReranker):
 
         reranker:
           hybrid:
-            embedding_weight: 0.5   # weight for the embedding path (0–1)
-            rerank_weight: 0.5       # weight for the cross-encoder path (0–1)
-
-    The *reranker.api_embedding* and *reranker.api_rerank* blocks are still
-    used for the sub-reranker credentials / models.
+            k: 60               # RRF smoothing constant (default 60)
     """
 
     def __init__(self, config: DictConfig):
@@ -53,56 +41,96 @@ class HybridReranker(BaseReranker):
         """Not used — hybrid overrides ``rerank()`` directly."""
         raise NotImplementedError
 
+    # ——————————————————————————————————————————————————————————————
+    # public API
+    # ——————————————————————————————————————————————————————————————
+
     def rerank(
         self, candidates: list[Paper], corpus: list[CorpusPaper]
     ) -> list[Paper]:
-        cfg = self.config.reranker.hybrid
+        k = self.config.reranker.hybrid.get("k", 60)
 
-        # ── 1.  Embedding-based scores (includes time-decay via base.rerank) ──
-        emb_scores = _get_embedding_scores(self._embedding, candidates, corpus)
+        # ── 1.  Score each paper via both paths ──────────────────
+        emb_rank = _score_and_rank(self._embedding, candidates, corpus, k)
+        cross_rank = _score_and_rank(self._cross, candidates, corpus, k)
 
-        # ── 2.  Cross-encoder scores ──
-        cross_scores = _get_rerank_scores(self._cross, candidates, corpus)
-
-        # ── 3.  Normalize & blend ──
-        emb_norm = _minmax_normalize(emb_scores)
-        cross_norm = _minmax_normalize(cross_scores)
-
-        w_emb = cfg.get("embedding_weight", 0.5)
-        w_cross = cfg.get("rerank_weight", 0.5)
-        blended = emb_norm * w_emb + cross_norm * w_cross
-
-        for s, c in zip(blended, candidates):
-            c.score = float(s * 10)  # scale back to 0–10 for display
+        # ── 2.  Reciprocal Rank Fusion ───────────────────────────
+        for c in candidates:
+            key = c.url  # arXiv entry_id is the canonical id
+            c.score = float(emb_rank.get(key, 0) + cross_rank.get(key, 0))
 
         candidates.sort(key=lambda x: x.score, reverse=True)
         return candidates
 
 
-# — helpers —————————————————————————————————————————————————————————
+# ——————————————————————————————————————————————————————————————————
+# helpers
+# ——————————————————————————————————————————————————————————————————
 
 
-def _get_embedding_scores(
-    embedder: ApiEmbeddingReranker,
+def _score_and_rank(
+    reranker: BaseReranker,
     candidates: list[Paper],
     corpus: list[CorpusPaper],
-) -> np.ndarray:
-    """Run the full embedding rerank path and extract raw scores."""
-    # base.rerank() computes time_decay_weight internally, so we can't easily
-    # bypass it.  Run it on a copy to avoid mutating the originals.
+    k: int,
+) -> dict[str, float]:
+    """Run *reranker* on a copy of *candidates*, then convert scores into
+    Reciprocal Rank Fusion contributions (``1 / (k + rank)``) keyed by
+    ``paper.url``.
+    """
     import copy
-    candidates_copy = copy.deepcopy(candidates)
-    embedder.rerank(candidates_copy, corpus)
-    return np.array([c.score for c in candidates_copy])
+
+    # Work on copies so the originals are untouched
+    cand_copy = copy.deepcopy(candidates)
+
+    _run_rerank_unsorted(reranker, cand_copy, corpus)
+
+    # Sort by score descending to assign ranks
+    ranked = sorted(cand_copy, key=lambda c: c.score or 0, reverse=True)
+
+    rrf: dict[str, float] = {}
+    for rank_zero, paper in enumerate(ranked):
+        rrf[paper.url] = 1.0 / (k + rank_zero + 1)  # rank starts at 1
+    return rrf
 
 
-def _get_rerank_scores(
-    cross: ApiRerankReranker,
+def _run_rerank_unsorted(
+    reranker: BaseReranker,
     candidates: list[Paper],
     corpus: list[CorpusPaper],
-) -> np.ndarray:
-    """Run the cross-encoder rerank path and extract raw scores."""
-    import copy
-    candidates_copy = copy.deepcopy(candidates)
-    cross.rerank(candidates_copy, corpus)
-    return np.array([c.score for c in candidates_copy])
+) -> None:
+    """Run the appropriate scoring path without relying on the default
+    sort-the-candidates-in-place behaviour.
+    """
+    from .api import ApiEmbeddingReranker
+    from .api_rerank import ApiRerankReranker
+
+    if isinstance(reranker, ApiEmbeddingReranker):
+        # Replicate BaseReranker.rerank() logic but don't sort at the end
+        corpus_by_date = sorted(corpus, key=lambda x: x.added_date, reverse=True)
+        time_decay = 1.0 / (1.0 + np.log10(np.arange(1, len(corpus_by_date) + 1)))
+        time_decay = time_decay / time_decay.sum()
+
+        c_texts = [c.title + " " + c.abstract for c in candidates]
+        k_texts = [k.title + " " + k.abstract for k in corpus_by_date]
+
+        sim = reranker.get_similarity_score(c_texts, k_texts)
+        assert sim.shape == (len(candidates), len(corpus_by_date))
+        raw = (sim * time_decay).sum(axis=1) * 10
+
+        for s, c in zip(raw, candidates):
+            c.score = float(s)
+
+    elif isinstance(reranker, ApiRerankReranker):
+        # The cross-encoder already sets scores per-paper, but it also
+        # sorts the list.  Call its rerank() then read scores back by URL.
+        import copy
+        cand_copy = copy.deepcopy(candidates)
+        reranker.rerank(cand_copy, corpus)
+        score_by_url = {c.url: c.score for c in cand_copy}
+        for c in candidates:
+            c.score = score_by_url.get(c.url, 0.0)
+
+    else:
+        # Generic fallback — just call rerank() directly
+        reranker.rerank(candidates, corpus)

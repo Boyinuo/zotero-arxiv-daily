@@ -70,8 +70,7 @@ reranker:
     instruct: null # Optional rerank instruction. Example: "Retrieve semantically similar text."
     query_max_tokens: null # Max tokens for the interest query built from Zotero corpus. Default 30000. Adjust based on your Zotero library size.
   hybrid:
-    embedding_weight: 0.5 # Weight of the embedding path (0–1). Embedding provides time-decayed similarity against every Zotero paper.
-    rerank_weight: 0.5 # Weight of the cross-encoder path (0–1). Cross-encoder provides deeper semantic understanding.
+    k: 60 # RRF smoothing constant. Higher = smoother blending, lower = sharper distinction between ranks. Default 60.
 
 executor:
   debug: false # Whether to use debug mode. Example: true
