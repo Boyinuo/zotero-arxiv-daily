@@ -9,6 +9,7 @@ documents we can rerank all candidates in one round trip.
 
 from __future__ import annotations
 
+import numpy as np
 from openai import OpenAI
 
 from .base import BaseReranker, register_reranker
@@ -18,6 +19,12 @@ from ..protocol import Paper, CorpusPaper
 @register_reranker("api_rerank")
 class ApiRerankReranker(BaseReranker):
     """Reranker that calls the Qwen3-Rerank API (OpenAI-compatible /reranks)."""
+
+    def get_similarity_score(self, s1: list[str], s2: list[str]) -> np.ndarray:
+        """Not used — this reranker overrides ``rerank()`` directly with a cross-encoder."""
+        raise NotImplementedError(
+            "ApiRerankReranker uses rerank(), not get_similarity_score()"
+        )
 
     def rerank(
         self, candidates: list[Paper], corpus: list[CorpusPaper]
