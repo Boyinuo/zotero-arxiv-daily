@@ -13,6 +13,7 @@ from time import sleep
 from typing import Any, Callable, TypeVar
 from loguru import logger
 import requests
+import re
 
 T = TypeVar("T")
 
@@ -124,7 +125,7 @@ class ArxivRetriever(BaseRetriever):
         raw_papers = []
         allowed_announce_types = {"new", "cross"} if include_cross_list else {"new"}
         all_paper_ids = [
-            i.id.removeprefix("oai:arXiv.org:")
+            re.sub(r"v\d+$", "", i.id.removeprefix("oai:arXiv.org:"))
             for i in feed.entries
             if i.get("arxiv_announce_type", "new") in allowed_announce_types
         ]
