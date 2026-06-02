@@ -69,8 +69,7 @@ reranker:
     model: null # Rerank model name. Example: qwen3-rerank
     instruct: null # Optional rerank instruction. Example: "Retrieve semantically similar text."
     query_max_tokens: null # Max tokens for the interest query built from Zotero corpus. Default 30000. Adjust based on your Zotero library size.
-  hybrid:
-    k: 60 # RRF smoothing constant. Higher = smoother blending, lower = sharper distinction between ranks. Default 60.
+  hybrid: {} # No extra config needed — scores from api_embedding and api_rerank are normalised then averaged.
 
 executor:
   debug: false # Whether to use debug mode. Example: true
