@@ -35,6 +35,7 @@ jobs:
 
       - name: Persist sent-paper records
         run: |
+          cd "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Stash local changes so git pull --rebase works on a clean tree
