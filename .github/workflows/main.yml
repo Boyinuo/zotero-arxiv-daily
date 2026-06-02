@@ -43,5 +43,10 @@ jobs:
             echo "No changes to sent-papers record"
           else
             git commit -m "chore: update sent-papers tracking [skip ci]"
+            # Discard config drift so the working tree is clean for pull.
+            git checkout -- config/custom.yaml
+            # Pull latest remote — another run may have pushed while we ran.
+            # -X ours: keep our sent_papers.json on rebase conflict.
+            git pull --rebase -X ours origin main
             git push
           fi
