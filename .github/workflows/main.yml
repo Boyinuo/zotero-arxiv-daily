@@ -38,14 +38,6 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Stash local changes so git pull --rebase works on a clean tree
-          if ! git diff --quiet -- data/sent_papers.json config/custom.yaml; then
-            git stash push -- data/sent_papers.json config/custom.yaml
-            git pull --rebase
-            git stash pop
-          else
-            git pull --rebase
-          fi
           git add data/sent_papers.json
           if git diff --staged --quiet; then
             echo "No changes to sent-papers record"
