@@ -197,10 +197,7 @@ def test_run_end_to_end(config, monkeypatch, tmp_path):
     sent = []
     monkeypatch.setattr(smtplib, "SMTP", make_stub_smtp(sent))
 
-    # 5. Stub sleep (reranker/retriever)
-    monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
-
-    # 6. Stub sent_tracker to use a temp file (avoid polluting real data/)
+    # 5. Stub sent_tracker to use a temp file (avoid polluting real data/)
     temp_tracker = SentTracker(tmp_path / "sent.json")
     monkeypatch.setattr(
         "zotero_arxiv_daily.executor.sent_tracker_for_project",
@@ -246,7 +243,7 @@ def test_run_no_papers_send_empty_false(config, monkeypatch, tmp_path):
 
     sent = []
     monkeypatch.setattr(smtplib, "SMTP", make_stub_smtp(sent))
-    monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
+
 
     temp_tracker = SentTracker(tmp_path / "sent.json")
     monkeypatch.setattr(
@@ -289,7 +286,7 @@ def test_run_no_papers_send_empty_true(config, monkeypatch, tmp_path):
 
     sent = []
     monkeypatch.setattr(smtplib, "SMTP", make_stub_smtp(sent))
-    monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
+
 
     temp_tracker = SentTracker(tmp_path / "sent.json")
     monkeypatch.setattr(
