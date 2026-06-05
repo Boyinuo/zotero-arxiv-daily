@@ -1,10 +1,7 @@
 """Tests for ArxivRetriever."""
 
 import time
-from datetime import datetime
 from types import SimpleNamespace
-
-import feedparser
 
 from zotero_arxiv_daily.retriever.arxiv_retriever import ArxivRetriever, _run_with_hard_timeout
 import zotero_arxiv_daily.retriever.arxiv_retriever as arxiv_retriever
@@ -19,40 +16,14 @@ def _raise_runtime_error() -> None:
     raise RuntimeError("boom")
 
 
-def test_arxiv_retriever(config, mock_feedparser, monkeypatch):
-    # The RSS fixture gives us paper IDs.  After feedparser, the code calls
-    # arxiv.Client().results(search) which makes real HTTP requests.  We mock
-    # the arxiv Client so the test stays offline.
+def test_arxiv_retriever(config, mock_feedparser):
+    # RSS feed is mocked by the mock_feedparser fixture.  The current
+    # implementation parses RSS entries directly — no arXiv API calls,
+    # no rate-limiting issues.
     new_entries = [
         e for e in mock_feedparser.entries
         if e.get("arxiv_announce_type", "new") == "new"
     ]
-    paper_ids = [e.id.removeprefix("oai:arXiv.org:") for e in new_entries]
-
-    # Build fake ArxivResult-like objects matching each RSS entry
-    fake_results = []
-    for entry in new_entries:
-        pid = entry.id.removeprefix("oai:arXiv.org:")
-        fake_results.append(SimpleNamespace(
-            title=entry.title,
-            authors=[SimpleNamespace(name="Test Author")],
-            summary="Test abstract",
-            pdf_url=f"https://arxiv.org/pdf/{pid}",
-            entry_id=f"https://arxiv.org/abs/{pid}",
-            source_url=lambda pid=pid: f"https://arxiv.org/e-print/{pid}",
-            published=datetime(2026, 5, 1),
-        ))
-
-    class FakeClient:
-        def __init__(self, **kw):
-            pass
-        def results(self, search):
-            return iter(fake_results)
-
-    monkeypatch.setattr(arxiv_retriever.arxiv, "Client", FakeClient)
-
-    # convert_to_paper() is now lightweight (no full-text download),
-    # so no need to monkeypatch extraction functions.
 
     retriever = ArxivRetriever(config)
     papers = retriever.retrieve_papers()
