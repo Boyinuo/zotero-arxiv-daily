@@ -33,6 +33,11 @@ source:
     feed_urls: null # A list of Science journal RSS feed URLs. Example:
                     #   - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics"  # Science Robotics
                     #   - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=sciadv"        # Science Advances
+  iop:
+    feed_urls: null # A list of IOPscience journal RSS feed URLs or ISSNs. Each journal's RSS is at https://iopscience.iop.org/journal/rss/{ISSN}
+                    # Example:
+                    #   - "1748-3190"  # Bioinspiration & Biomimetics
+                    #   - "https://iopscience.iop.org/journal/rss/1748-3190"  # Equivalent full URL
 
 email:
   sender: ??? # The email account of the SMTP server that sends you email. Example: abc@qq.com
