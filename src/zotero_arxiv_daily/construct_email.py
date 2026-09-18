@@ -74,6 +74,9 @@ JOURNAL_COLORS: dict[str, str] = {
     "Nature Communications":  "#1565c0",  # nature blue
     "Bioinspiration & Biomimetics": "#0d7c50",  # teal-green (IOPscience)
     "IOPscience": "#0d7c50",  # teal-green (IOP fallback)
+    "Soft Robotics": "#7b1fa2",  # purple (Sage)
+    "The International Journal of Robotics Research": "#00695c",  # teal (Sage)
+    "Sage Journals": "#5d4037",  # brown (Sage fallback)
 }
 
 def _source_color(source: str) -> str:

@@ -5,6 +5,7 @@ from omegaconf import OmegaConf
 from zotero_arxiv_daily.retriever.ieee_retriever import IEEERetriever
 from zotero_arxiv_daily.retriever.iop_retriever import IOPRetriever
 from zotero_arxiv_daily.retriever.nature_retriever import NatureRetriever
+from zotero_arxiv_daily.retriever.sage_retriever import SageRetriever
 from zotero_arxiv_daily.retriever.science_retriever import ScienceRetriever
 
 
@@ -24,6 +25,7 @@ def test_all_journal_sources_accept_short_feed_identifiers():
         _config("science", {"feed_urls": ["scirobotics", "sciadv"]})
     )
     iop = IOPRetriever(_config("iop", {"feed_urls": ["1748-3190"]}))
+    sage = SageRetriever(_config("sage", {"feed_urls": ["srb", "ijr"]}))
 
     assert ieee.feed_urls == ["https://ieeexplore.ieee.org/rss/TOC7083369.XML"]
     assert nature.feed_urls == ["https://www.nature.com/ncomms.rss"]
@@ -32,6 +34,10 @@ def test_all_journal_sources_accept_short_feed_identifiers():
         "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=sciadv",
     ]
     assert iop.feed_urls == ["https://iopscience.iop.org/journal/rss/1748-3190"]
+    assert sage.feed_urls == [
+        "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=srb&type=axatoc&feed=rss",
+        "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=ijr&type=axatoc&feed=rss",
+    ]
 
 
 def test_full_feed_urls_remain_supported():
@@ -43,9 +49,15 @@ def test_full_feed_urls_remain_supported():
 
     nature = NatureRetriever(_config("nature", {"feed_urls": [nature_url]}))
     science = ScienceRetriever(_config("science", {"feed_urls": [science_url]}))
+    sage_url = (
+        "https://journals.sagepub.com/action/showFeed"
+        "?ui=0&mi=ehikzz&ai=2b4&jc=srb&type=axatoc&feed=rss"
+    )
+    sage = SageRetriever(_config("sage", {"feed_urls": [sage_url]}))
 
     assert nature.feed_urls == [nature_url]
     assert science.feed_urls == [science_url]
+    assert sage.feed_urls == [sage_url]
 
 
 def test_legacy_nature_feed_url_remains_supported():

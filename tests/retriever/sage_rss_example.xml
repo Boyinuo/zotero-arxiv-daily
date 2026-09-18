@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:content="http://purl.org/rss/1.0/modules/content/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:prism="http://prismstandard.org/namespaces/basic/2.0/">
+  <channel rdf:about="https://journals.sagepub.com/">
+    <title>Sage Journals: Table of Contents</title>
+    <description>Table of Contents for Soft Robotics. List of articles from ahead of print issues.</description>
+    <link>https://journals.sagepub.com/</link>
+    <items>
+      <rdf:Seq>
+        <rdf:li rdf:resource="https://journals.sagepub.com/doi/abs/10.1177/example"/>
+      </rdf:Seq>
+    </items>
+  </channel>
+  <item rdf:about="https://journals.sagepub.com/doi/abs/10.1177/example">
+    <title>A &amp; B Soft Robot</title>
+    <link>https://journals.sagepub.com/doi/abs/10.1177/example?ai=2b4&amp;mi=ehikzz&amp;af=R</link>
+    <content:encoded>Soft Robotics, Ahead of Print. &lt;br/&gt;A compact abstract about a soft robot.</content:encoded>
+    <description>Soft Robotics, Ahead of Print. &lt;br/&gt;A compact abstract about a soft robot.</description>
+    <dc:identifier>doi:10.1177/example</dc:identifier>
+    <dc:date>2026-09-10T07:00:00Z</dc:date>
+    <dc:creator>Jane Doe, John Smith1Department of Robotics, Example University, Example City.</dc:creator>
+    <prism:publicationName>Soft Robotics</prism:publicationName>
+    <prism:doi>10.1177/example</prism:doi>
+    <prism:url>https://journals.sagepub.com/doi/abs/10.1177/example?ai=2b4&amp;mi=ehikzz&amp;af=R</prism:url>
+  </item>
+</rdf:RDF>
