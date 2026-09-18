@@ -54,9 +54,9 @@ def get_empty_html():
 
 JOURNAL_COLORS: dict[str, str] = {
     "RA-L":  "#d41515",   # red
-    "TRO":   "#c75b1a",   # orange
-    "TASE":  "#2e7d32",   # green
-    "TMECH": "#6a1b9a",   # purple
+    "T-RO":   "#c75b1a",   # orange
+    "T-ASE":  "#2e7d32",   # green
+    "T-MECH": "#6a1b9a",   # purple
     "RAM":   "#c2185b",   # pink
     "THMS":  "#0277bd",   # light blue
     "TCYB":  "#00838f",   # teal
