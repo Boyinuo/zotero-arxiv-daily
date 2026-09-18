@@ -134,6 +134,12 @@ source:
                     #   - "https://ieeexplore.ieee.org/rss/TOC8856.XML"      # IEEE Trans. on Automation Science and Engineering (TASE)
                     #   - "https://ieeexplore.ieee.org/rss/TOC3516.XML"      # IEEE/ASME Trans. on Mechatronics (TMECH)
                     #   - "7083369"                                           # Shorthand: bare publication ID also works
+  nature:
+    feed_urls: null # Nature journal slugs or full RSS URLs. Example: ["ncomms"]
+  science:
+    feed_urls: null # Science journal codes or full RSS URLs. Example: ["scirobotics", "sciadv"]
+  iop:
+    feed_urls: null # IOPscience ISSNs or full RSS URLs. Example: ["1748-3190"]
 
 email:
   sender: ??? # The email account of the SMTP server that sends you email. Example: abc@qq.com

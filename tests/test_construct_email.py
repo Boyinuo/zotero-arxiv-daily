@@ -12,6 +12,19 @@ def test_render_email_with_papers():
     assert "MIT" in html
 
 
+def test_render_email_shows_hybrid_score_breakdown():
+    paper = make_sample_paper(
+        score=8.8,
+        embedding_score=7.0,
+        rerank_score=6.0,
+        tldr="A hybrid-ranked paper.",
+    )
+    html = render_email([paper])
+    assert "8.8" in html
+    assert "embedding 7.0" in html
+    assert "rerank 6.0" in html
+
+
 def test_render_email_empty_list():
     html = render_email([])
     assert "No Papers Today" in html

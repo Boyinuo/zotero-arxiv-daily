@@ -161,8 +161,9 @@ def render_email(papers:list[Paper]) -> str:
     for p in papers:
         # Build relevance line — for hybrid reranker show raw breakdown
         if p.embedding_score is not None and p.rerank_score is not None:
+            stars = get_stars(p.score) if p.score is not None else ""
             rate = (
-                get_stars(p.score) if p.score is not None else ""
+                stars
                 + f' <span style="font-size:12px;color:#888;">'
                 f'(embedding {p.embedding_score:.1f} &middot; rerank {p.rerank_score:.1f})'
                 f'</span>'

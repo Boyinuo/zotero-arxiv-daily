@@ -9,45 +9,69 @@ from time import sleep
 
 @register_retriever("nature")
 class NatureRetriever(BaseRetriever):
-    """Retrieve latest papers from Nature Communications RSS feed.
+    """Retrieve latest papers from Nature journal RSS feeds.
 
-    Configuration expects ``source.nature.feed_url`` — a single RSS URL.
+    Configuration expects ``source.nature.feed_urls`` — a list of journal
+    slugs or full RSS URLs.  The legacy singular ``feed_url`` key is still
+    accepted for backward compatibility.
     Example::
 
         source:
           nature:
-            feed_url: "https://www.nature.com/ncomms.rss"
+            feed_urls:
+              - "ncomms"
     """
+
+    @staticmethod
+    def _normalize_feed_url(raw: str) -> str:
+        """Accept either a full RSS URL or a bare Nature journal slug."""
+        raw = raw.strip()
+        if raw.startswith(("http://", "https://")):
+            return raw
+        slug = raw.removesuffix(".rss").strip("/")
+        return f"https://www.nature.com/{slug}.rss"
 
     def __init__(self, config):
         super().__init__(config)
-        feed_url = self.retriever_config.get("feed_url")
-        if not feed_url:
+        raw_urls = self.retriever_config.get("feed_urls")
+        if not raw_urls:
+            legacy_url = self.retriever_config.get("feed_url")
+            raw_urls = [legacy_url] if legacy_url else []
+        if not raw_urls:
             raise ValueError(
-                "source.nature.feed_url must contain the Nature "
-                "Communications RSS URL."
+                "source.nature.feed_urls must contain at least one "
+                "Nature journal slug or RSS URL."
             )
-        self.feed_url = feed_url.strip()
+        self.feed_urls = [self._normalize_feed_url(url) for url in raw_urls]
 
     # — BaseRetriever interface ——————————————————————————————————
 
     def _retrieve_raw_papers(self) -> list[dict[str, Any]]:
-        logger.info(f"Fetching Nature RSS feed: {self.feed_url}")
-        feed = feedparser.parse(self.feed_url)
+        all_entries: list[dict[str, Any]] = []
+        for url in self.feed_urls:
+            logger.info(f"Fetching Nature RSS feed: {url}")
+            feed = feedparser.parse(url)
 
-        if feed.bozo and not feed.entries:
-            logger.warning(
-                f"Failed to parse Nature RSS feed ({self.feed_url}): "
-                f"{feed.bozo_exception}"
-            )
-            return []
+            if feed.bozo and not feed.entries:
+                logger.warning(
+                    f"Failed to parse Nature RSS feed ({url}): "
+                    f"{feed.bozo_exception}"
+                )
+                continue
 
-        entries = feed.entries
-        if self.config.executor.debug:
-            entries = entries[:10]
+            entries = feed.entries[:10] if self.config.executor.debug else feed.entries
+            logger.info(f"  -> {len(entries)} entries from Nature RSS")
+            all_entries.extend(entries)
+            sleep(1)
 
-        logger.info(f"  -> {len(entries)} entries from Nature RSS")
-        return list(entries)
+        seen: set[str] = set()
+        unique: list[dict[str, Any]] = []
+        for entry in all_entries:
+            identifier = entry.get("id", entry.get("link", ""))
+            if identifier not in seen:
+                seen.add(identifier)
+                unique.append(entry)
+        return unique
 
     def convert_to_paper(self, raw_paper: dict[str, Any]) -> Paper | None:
         title = _strip_html(raw_paper.get("title", "")).strip()

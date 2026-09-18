@@ -28,11 +28,11 @@ source:
                     #   - "https://ieeexplore.ieee.org/rss/TOC6221020.XML"   # IEEE Journal of Biomedical and Health Informatics
                     # You can also use a bare publication ID, e.g. "7083369"
   nature:
-    feed_url: null # RSS feed URL for Nature Communications. Example: "https://www.nature.com/ncomms.rss"
+    feed_urls: null # A list of Nature journal slugs or full RSS URLs. Example: ["ncomms"]
   science:
-    feed_urls: null # A list of Science journal RSS feed URLs. Example:
-                    #   - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics"  # Science Robotics
-                    #   - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=sciadv"        # Science Advances
+    feed_urls: null # A list of Science journal codes or full RSS URLs. Example:
+                    #   - "scirobotics"  # Science Robotics
+                    #   - "sciadv"       # Science Advances
   iop:
     feed_urls: null # A list of IOPscience journal RSS feed URLs or ISSNs. Each journal's RSS is at https://iopscience.iop.org/journal/rss/{ISSN}
                     # Example:

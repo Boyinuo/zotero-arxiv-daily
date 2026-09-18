@@ -11,14 +11,15 @@ class ScienceRetriever(BaseRetriever):
     """Retrieve latest papers from Science journal RSS feeds (Science Robotics,
     Science Advances, etc.).
 
-    Configuration expects ``source.science.feed_urls`` — a list of RSS URLs.
+    Configuration expects ``source.science.feed_urls`` — a list of journal
+    codes or full RSS URLs.
     Example::
 
         source:
-          science:
-            feed_urls:
-              - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics"
-              - "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=sciadv"
+            science:
+              feed_urls:
+              - "scirobotics"
+              - "sciadv"
 
     .. note::
 
@@ -30,15 +31,26 @@ class ScienceRetriever(BaseRetriever):
     # Only these dc_type values represent full research papers
     _KEPT_TYPES = frozenset({"Research Article"})
 
+    @staticmethod
+    def _normalize_feed_url(raw: str) -> str:
+        """Accept either a full RSS URL or a bare Science journal code."""
+        raw = raw.strip()
+        if raw.startswith(("http://", "https://")):
+            return raw
+        return (
+            "https://www.science.org/action/showFeed"
+            f"?type=etoc&feed=rss&jc={raw}"
+        )
+
     def __init__(self, config):
         super().__init__(config)
         raw_urls = self.retriever_config.get("feed_urls", [])
         if not raw_urls:
             raise ValueError(
                 "source.science.feed_urls must contain at least one "
-                "Science journal RSS URL."
+                "Science journal code or RSS URL."
             )
-        self.feed_urls = [u.strip() for u in raw_urls]
+        self.feed_urls = [self._normalize_feed_url(url) for url in raw_urls]
 
     # — BaseRetriever interface ——————————————————————————————————
 
