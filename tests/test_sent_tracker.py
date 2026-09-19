@@ -127,6 +127,17 @@ def test_mark_sent_twice_in_same_run_is_idempotent():
 def test_prune_removes_old_entries(monkeypatch):
     """Simulate entries that are older than max_age_days."""
     import json as _json
+    from datetime import datetime as _datetime
+
+    class _FixedDatetime(_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 6, 15, tzinfo=tz)
+
+    monkeypatch.setattr(
+        "zotero_arxiv_daily.sent_tracker.datetime",
+        _FixedDatetime,
+    )
 
     d = Path(tempfile.mkdtemp())
     path = d / "sent.json"
