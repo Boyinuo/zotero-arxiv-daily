@@ -1,6 +1,7 @@
 import feedparser
 from .base import BaseRetriever, register_retriever
 from ..protocol import Paper
+from ..metadata import extract_doi, normalize_abstract
 from loguru import logger
 from typing import Any
 from time import sleep, strftime
@@ -61,12 +62,18 @@ class IOPRetriever(BaseRetriever):
         authors = [a.strip() for a in author_str.split(",") if a.strip()]
 
         # Abstract: feedparser maps RSS description -> summary
-        abstract = raw_paper.get("summary", "").strip()
+        abstract = normalize_abstract(raw_paper.get("summary", ""))
         if not authors and not abstract:
             return None
 
         # URL
         url = raw_paper.get("link", "")
+        doi = extract_doi(
+            raw_paper.get("prism_doi"),
+            raw_paper.get("dc_identifier"),
+            raw_paper.get("id"),
+            url,
+        )
 
         # PDF URL: IOPscience provides PDF links in the feed (iop:pdf)
         pdf_url = raw_paper.get("iop_pdf", None)
@@ -88,6 +95,7 @@ class IOPRetriever(BaseRetriever):
             authors=authors,
             abstract=abstract,
             url=url,
+            doi=doi,
             pdf_url=pdf_url,
             full_text=None,
             pub_date=pub_date,

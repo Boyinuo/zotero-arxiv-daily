@@ -2,6 +2,7 @@ import feedparser
 import re
 from .base import BaseRetriever, register_retriever
 from ..protocol import Paper
+from ..metadata import extract_doi, normalize_abstract
 from loguru import logger
 from typing import Any
 from time import sleep
@@ -236,7 +237,7 @@ class IEEERetriever(BaseRetriever):
         authors = [a.strip() for a in author_str.split(";") if a.strip()]
 
         # "description" in IEEE RSS is the abstract
-        abstract = raw_paper.get("description", "")
+        abstract = normalize_abstract(raw_paper.get("description", ""))
 
         # A research paper must have either authors or a non-trivial abstract
         if not authors and not abstract:
@@ -250,6 +251,13 @@ class IEEERetriever(BaseRetriever):
             url = url
         else:
             url = guid
+
+        doi = extract_doi(
+            raw_paper.get("prism_doi"),
+            raw_paper.get("dc_identifier"),
+            raw_paper.get("doi"),
+            url,
+        )
 
         # Publication date from RSS (feedparser provides parsed struct_time)
         pub_date = None
@@ -270,6 +278,7 @@ class IEEERetriever(BaseRetriever):
             authors=authors,
             abstract=abstract,
             url=url,
+            doi=doi,
             pdf_url=None,
             full_text=None,
             pub_date=pub_date,

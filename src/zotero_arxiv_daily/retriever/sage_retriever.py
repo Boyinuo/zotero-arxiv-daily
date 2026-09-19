@@ -9,6 +9,7 @@ from loguru import logger
 
 from .base import BaseRetriever, register_retriever
 from ..protocol import Paper
+from ..metadata import extract_doi, normalize_abstract
 
 
 @register_retriever("sage")
@@ -85,12 +86,20 @@ class SageRetriever(BaseRetriever):
 
         authors = _extract_authors(raw_paper)
         journal = raw_paper.get("prism_publicationname", "") or "Sage Journals"
-        abstract = _extract_abstract(raw_paper.get("summary", ""), journal)
+        abstract = normalize_abstract(
+            _extract_abstract(raw_paper.get("summary", ""), journal)
+        )
         if not authors and not abstract:
             return None
 
         url = _canonical_article_url(
             raw_paper.get("prism_url", "") or raw_paper.get("link", "")
+        )
+        doi = extract_doi(
+            raw_paper.get("prism_doi"),
+            raw_paper.get("dc_identifier"),
+            raw_paper.get("id"),
+            url,
         )
 
         pub_date = raw_paper.get("updated", "") or raw_paper.get("published", "")
@@ -108,6 +117,7 @@ class SageRetriever(BaseRetriever):
             authors=authors,
             abstract=abstract,
             url=url,
+            doi=doi,
             pdf_url=None,
             full_text=None,
             pub_date=pub_date,

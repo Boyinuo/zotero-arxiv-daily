@@ -1,6 +1,7 @@
 import feedparser
 from .base import BaseRetriever, register_retriever
 from ..protocol import Paper
+from ..metadata import extract_doi
 from loguru import logger
 from typing import Any
 from time import sleep
@@ -24,8 +25,8 @@ class ScienceRetriever(BaseRetriever):
     .. note::
 
         The Science RSS feed does **not** include paper abstracts — only
-        journal metadata.  Rankings will rely on title similarity alone
-        and TLDR generation will fall back to the title-only prompt.
+        journal metadata. The DOI is retained so the executor can enrich new
+        entries from Crossref or OpenAlex before ranking and TLDR generation.
     """
 
     # Only these dc_type values represent full research papers
@@ -105,6 +106,12 @@ class ScienceRetriever(BaseRetriever):
         abstract = ""
 
         url = raw_paper.get("link", "")
+        doi = extract_doi(
+            raw_paper.get("prism_doi"),
+            raw_paper.get("dc_identifier"),
+            raw_paper.get("id"),
+            url,
+        )
 
         # Publication date from prism_coverdate
         pub_date = raw_paper.get("prism_coverdate", "")
@@ -118,6 +125,7 @@ class ScienceRetriever(BaseRetriever):
             authors=author_names,
             abstract=abstract,
             url=url,
+            doi=doi,
             pdf_url=None,
             full_text=None,
             pub_date=pub_date,

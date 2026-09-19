@@ -5,6 +5,7 @@ from .utils import glob_match
 from .retriever import get_retriever_cls
 from .protocol import CorpusPaper, Paper
 from .sent_tracker import sent_tracker_for_project
+from .metadata import enrich_missing_abstracts
 import random
 from datetime import datetime
 from .reranker import get_reranker_cls
@@ -143,6 +144,12 @@ class Executor:
         # Deduplicate against previously-sent papers (cross-run tracking)
         all_papers = self.sent_tracker.filter_new_papers(all_papers)
         logger.info(f"{len(all_papers)} new papers after deduplication")
+
+        # Journal RSS feeds do not consistently include abstracts. Enrich only
+        # new papers here so repeated feed entries do not cause duplicate API
+        # traffic, and do it before reranking so relevance uses the abstract.
+        contact_email = str(self.config.email.get("sender", ""))
+        enrich_missing_abstracts(all_papers, contact_email=contact_email)
 
         reranked_papers = []
         if len(all_papers) > 0:

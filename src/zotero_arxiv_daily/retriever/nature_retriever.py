@@ -2,6 +2,7 @@ import feedparser
 import re
 from .base import BaseRetriever, register_retriever
 from ..protocol import Paper
+from ..metadata import extract_doi, normalize_abstract
 from loguru import logger
 from typing import Any
 from time import sleep
@@ -85,9 +86,17 @@ class NatureRetriever(BaseRetriever):
         # Abstract is embedded in the summary HTML after a journal metadata
         # prefix of the form:
         #   "Nature Communications, Published online: 01 June 2026; doi:XXX"
-        abstract = _extract_nature_abstract(raw_paper.get("summary", ""))
+        abstract = normalize_abstract(
+            _extract_nature_abstract(raw_paper.get("summary", ""))
+        )
 
         url = raw_paper.get("link", "")
+        doi = extract_doi(
+            raw_paper.get("prism_doi"),
+            raw_paper.get("dc_identifier"),
+            raw_paper.get("id"),
+            url,
+        )
 
         # Publication date from `updated` field (e.g. "2026-06-01")
         pub_date = raw_paper.get("updated", "")
@@ -102,6 +111,7 @@ class NatureRetriever(BaseRetriever):
             authors=authors,
             abstract=abstract,
             url=url,
+            doi=doi,
             pdf_url=None,
             full_text=None,
             pub_date=pub_date,
