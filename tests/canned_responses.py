@@ -85,6 +85,7 @@ _DEFAULT_ITEMS = [
             "abstractNote": "Abstract of stub paper 1.",
             "dateAdded": "2026-01-15T10:00:00Z",
             "collections": ["COL2"],
+            "extra": "Original Date: 2025\nrate: 5",
         },
     },
     {
@@ -93,6 +94,7 @@ _DEFAULT_ITEMS = [
             "abstractNote": "Abstract of stub paper 2.",
             "dateAdded": "2026-02-20T12:00:00Z",
             "collections": ["COL1"],
+            "extra": "",
         },
     },
 ]

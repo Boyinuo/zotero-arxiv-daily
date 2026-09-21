@@ -61,6 +61,10 @@ llm:
   language: English # Preferred language for the TL;DR. Example: English
 
 reranker:
+  corpus_weighting:
+    rating_enabled: true # Use Zotero Style's `rate: 1-5` value from the Extra field as an interest weight.
+    rating_strength: 1.0 # 0 disables the effect; at 1.0, ratings 1/3/5 map to multipliers 0.5/1.0/2.0.
+    unrated_value: 3 # Neutral value used for missing or cleared ratings (`rate: 0`).
   local:
     model: jinaai/jina-embeddings-v5-text-nano-retrieval # The Hugging Face model name of the local embedding model. Example: jinaai/jina-embeddings-v5-text-nano
     encode_kwargs:

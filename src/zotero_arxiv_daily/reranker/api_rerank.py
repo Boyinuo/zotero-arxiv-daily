@@ -13,6 +13,7 @@ import numpy as np
 from openai import OpenAI
 
 from .base import BaseReranker, register_reranker
+from .interest_profile import corpus_by_priority, has_active_ratings
 from ..protocol import Paper, CorpusPaper
 
 
@@ -26,9 +27,9 @@ class ApiRerankReranker(BaseReranker):
             "ApiRerankReranker uses rerank(), not get_similarity_score()"
         )
 
-    def rerank(
+    def compute_scores(
         self, candidates: list[Paper], corpus: list[CorpusPaper]
-    ) -> list[Paper]:
+    ) -> np.ndarray:
         cfg = self.config.reranker.api_rerank
 
         client = OpenAI(
@@ -37,7 +38,7 @@ class ApiRerankReranker(BaseReranker):
         )
 
         query_max_tokens = cfg.get("query_max_tokens") or 30000
-        query = self._build_interest_query(corpus, query_max_tokens)
+        query = self._build_interest_query(corpus, query_max_tokens, self.config)
         documents = [c.title + " " + c.abstract for c in candidates]
 
         body: dict = {
@@ -52,27 +53,29 @@ class ApiRerankReranker(BaseReranker):
         response = client.post("/reranks", body=body, cast_to=object)
         results = response["results"]
 
-        # Build index → score map, then assign scores
+        # Build index → score map, preserving the original candidate order.
         score_map: dict[int, float] = {}
         for r in results:
             score_map[r["index"]] = r["relevance_score"]
 
-        for i, c in enumerate(candidates):
-            c.score = score_map.get(i, 0.0) * 10  # scale to ~0–10
-
-        candidates.sort(key=lambda x: x.score, reverse=True)
-        return candidates
+        return np.array(
+            [score_map.get(i, 0.0) * 10 for i in range(len(candidates))],
+            dtype=float,
+        )
 
     # ------------------------------------------------------------------
     # internal helpers
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _build_interest_query(corpus: list[CorpusPaper], max_tokens: int) -> str:
+    def _build_interest_query(
+        corpus: list[CorpusPaper], max_tokens: int, config=None
+    ) -> str:
         """Fuse the user's Zotero corpus into a representative query string.
 
-        More recently added papers are placed near the front so the
-        cross-encoder's self-attention naturally weights them higher.
+        Rated corpora are ordered by combined rating/recency priority and
+        annotated with their preference level. Unrated corpora retain the
+        legacy newest-first representation.
         The query is capped at *max_tokens* to stay within model limits
         while carrying as much of the user's interest profile as possible.
         """
@@ -80,13 +83,32 @@ class ApiRerankReranker(BaseReranker):
 
         enc = tiktoken.encoding_for_model("gpt-4o")
 
-        corpus = sorted(corpus, key=lambda x: x.added_date, reverse=True)
-        lines: list[str] = []
-        tokens_used = 0
+        use_ratings = has_active_ratings(corpus, config)
+        if use_ratings:
+            corpus = corpus_by_priority(corpus, config)
+            header = (
+                "The following references describe the user's interests. "
+                "A higher preference rating indicates stronger interest."
+            )
+            lines: list[str] = [header]
+            tokens_used = len(enc.encode(header)) + 1
+        else:
+            # Preserve the legacy query exactly when the corpus is unrated.
+            corpus = sorted(corpus, key=lambda x: x.added_date, reverse=True)
+            lines = []
+            tokens_used = 0
 
         for c in corpus:
             abstract_snip = c.abstract[:300]  # first 300 chars is enough signal
-            line = f"{c.title}: {abstract_snip}"
+            if use_ratings:
+                preference = (
+                    f"{c.preference_rating}/5"
+                    if c.preference_rating is not None
+                    else "not rated"
+                )
+                line = f"[Preference: {preference}] {c.title}: {abstract_snip}"
+            else:
+                line = f"{c.title}: {abstract_snip}"
             line_tokens = len(enc.encode(line)) + 1  # +1 for the "\n\n" separator
             if tokens_used + line_tokens > max_tokens:
                 break

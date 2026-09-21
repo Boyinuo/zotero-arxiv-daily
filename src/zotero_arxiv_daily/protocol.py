@@ -137,3 +137,4 @@ class CorpusPaper:
     abstract: str
     added_date: datetime
     paths: list[str]
+    preference_rating: int | None = None

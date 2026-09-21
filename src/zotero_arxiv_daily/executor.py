@@ -6,6 +6,7 @@ from .retriever import get_retriever_cls
 from .protocol import CorpusPaper, Paper
 from .sent_tracker import sent_tracker_for_project
 from .metadata import enrich_missing_abstracts
+from .zotero_metadata import parse_preference_rating
 import random
 from datetime import datetime
 from .reranker import get_reranker_cls
@@ -89,12 +90,16 @@ class Executor:
             paths = [get_collection_path(col) for col in c['data']['collections']]
             c['paths'] = paths
         logger.info(f"Fetched {len(corpus)} zotero papers")
-        return [CorpusPaper(
+        corpus_papers = [CorpusPaper(
             title=c['data']['title'],
             abstract=c['data']['abstractNote'],
             added_date=datetime.strptime(c['data']['dateAdded'], '%Y-%m-%dT%H:%M:%SZ'),
-            paths=c['paths']
+            paths=c['paths'],
+            preference_rating=parse_preference_rating(c['data'].get('extra')),
         ) for c in corpus]
+        rated_count = sum(p.preference_rating is not None for p in corpus_papers)
+        logger.info(f"Loaded Zotero preference ratings for {rated_count} papers")
+        return corpus_papers
     
     def filter_corpus(self, corpus:list[CorpusPaper]) -> list[CorpusPaper]:
         if self.include_path_patterns:

@@ -61,23 +61,13 @@ def _raw_embedding_scores(
     candidates: list[Paper],
     corpus: list[CorpusPaper],
 ) -> dict[str, float]:
-    """Embedding path: weighted cosine similarity with time decay.
+    """Embedding path: weighted cosine similarity with the interest profile.
 
     Each candidate's score is the weighted sum of cosine similarities
-    against every Zotero paper (newer papers weighted higher), scaled
-    to 0–10.
+    against every Zotero paper, using combined recency/rating weights and
+    scaled to 0–10.
     """
-    corpus_by_date = sorted(corpus, key=lambda x: x.added_date, reverse=True)
-    time_decay = 1.0 / (1.0 + np.log10(np.arange(1, len(corpus_by_date) + 1)))
-    time_decay = time_decay / time_decay.sum()
-
-    c_texts = [c.title + " " + c.abstract for c in candidates]
-    k_texts = [k.title + " " + k.abstract for k in corpus_by_date]
-
-    sim = embedder.get_similarity_score(c_texts, k_texts)
-    assert sim.shape == (len(candidates), len(corpus_by_date))
-    raw = (sim * time_decay).sum(axis=1) * 10
-
+    raw = embedder.compute_scores(candidates, corpus)
     return {c.url: float(s) for c, s in zip(candidates, raw)}
 
 
@@ -87,7 +77,5 @@ def _raw_rerank_scores(
     corpus: list[CorpusPaper],
 ) -> dict[str, float]:
     """Cross-encoder path: relevance_score × 10 per candidate."""
-    import copy
-    cand_copy = copy.deepcopy(candidates)
-    cross.rerank(cand_copy, corpus)
-    return {c.url: c.score or 0.0 for c in cand_copy}
+    raw = cross.compute_scores(candidates, corpus)
+    return {c.url: float(s) for c, s in zip(candidates, raw)}

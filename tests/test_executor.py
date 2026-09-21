@@ -117,6 +117,8 @@ def test_fetch_zotero_corpus(config, monkeypatch):
     assert len(corpus) == 2
     assert corpus[0].title == "Stub Paper 1"
     assert "survey/topic-a" in corpus[0].paths[0]
+    assert corpus[0].preference_rating == 5
+    assert corpus[1].preference_rating is None
 
 
 def test_fetch_zotero_corpus_paper_with_zero_collections(config, monkeypatch):
@@ -129,6 +131,7 @@ def test_fetch_zotero_corpus_paper_with_zero_collections(config, monkeypatch):
                 "abstractNote": "Abstract.",
                 "dateAdded": "2026-03-01T00:00:00Z",
                 "collections": [],
+                "extra": "rate: 0",
             }
         }
     ]
@@ -141,6 +144,7 @@ def test_fetch_zotero_corpus_paper_with_zero_collections(config, monkeypatch):
 
     assert len(corpus) == 1
     assert corpus[0].paths == []
+    assert corpus[0].preference_rating is None
 
 
 # ---------------------------------------------------------------------------
